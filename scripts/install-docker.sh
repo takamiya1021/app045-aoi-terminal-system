@@ -301,12 +301,16 @@ if [[ "${AOI_TERMINALS_PRINT_SHARE:-1}" != "0" ]] && [[ -n "$final_token" ]]; th
           if command -v qrencode >/dev/null 2>&1; then
             qrencode -t ANSIUTF8 "${share_url}"
           else
-            # 依存を増やしたくないので、基本は Docker で一時コンテナを起動してQRを出す
+            # qrencode が無い環境が普通やから、ホストへの追加インストール前提にしない。
+            # ここでは “既にpull済みの frontend イメージ” を使って Node(qrcode) でQRをANSI出力する。
             if command -v docker >/dev/null 2>&1; then
-              if docker run --rm --pull=always -e SHARE_URL="${share_url}" alpine:3.20 sh -c 'apk add --no-cache qrencode >/dev/null 2>&1 && qrencode -t ANSIUTF8 "$SHARE_URL"' 2>/dev/null; then
+              frontend_image="${IMAGE_REPO}-frontend:${TAG}"
+              if docker run --rm --pull=never --network=none -e SHARE_URL="${share_url}" "${frontend_image}" \
+                node -e "const QR=require('qrcode'); QR.toString(process.env.SHARE_URL,{type:'terminal'},(e,s)=>{if(e){process.exit(1)}; process.stdout.write(s)})" \
+                2>/dev/null; then
                 :
               else
-                echo "(QR) qrencode not found (and docker fallback failed). Install to print QR in terminal:"
+                echo "(QR) qrencode not found (and docker QR fallback failed). Install to print QR in terminal:"
                 echo "  sudo apt-get update && sudo apt-get install -y qrencode"
               fi
             else
