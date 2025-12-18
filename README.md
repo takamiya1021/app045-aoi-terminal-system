@@ -133,6 +133,11 @@ npx playwright test --config playwright.config.existing.ts
 - Dockerでの配布・デプロイを想定しています（`docker compose up -d --build` または “最短起動”）。
 - リバースプロキシ（TLS終端）配下に置く場合は、`ALLOWED_ORIGINS` とCookie設定を環境に合わせて調整してください。
 
+### npmパッケージ配布（メンテナ向け）
+
+- `npm-v*` タグpushで GitHub Packages に publish します: `.github/workflows/publish-npm-github-packages.yml`
+- パッケージ名: `@takamiya1021/aoi-terminals`
+
 ## 開発ドキュメントリンク
 
 - 要件定義: `doc/improved-terminal-system-requirements.md`
