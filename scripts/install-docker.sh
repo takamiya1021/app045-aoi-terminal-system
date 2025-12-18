@@ -44,6 +44,12 @@ read_env_value() {
   printf "%s" "${line#${key}=}"
 }
 
+extract_json_string() {
+  local key="$1"
+  # 超軽量パーサ: {"token":"..."} の ... を抜く（tokenはbase64url想定）
+  sed -n "s/.*\"${key}\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p" | head -n 1
+}
+
 if ! command -v docker >/dev/null 2>&1; then
   echo "[aoi-terminals] docker が見つからへん。Dockerを入れてからもう一回やってな。"
   exit 1
@@ -157,5 +163,56 @@ if [[ -n "$final_token" ]]; then
 else
   echo "Login token: see ${BASE_DIR}/.env (TERMINAL_TOKEN=...)"
 fi
+
+# 可能なら“ワンタイム共有リンク”もCLIに出す（ブラウザを開かなくてもスマホに渡せる）
+if [[ "${AOI_TERMINALS_PRINT_SHARE:-1}" != "0" ]] && [[ -n "$final_token" ]]; then
+  if command -v curl >/dev/null 2>&1; then
+    BACKEND_HTTP="http://127.0.0.1:3102"
+    deadline=$((SECONDS + 20))
+    until curl -fsS "${BACKEND_HTTP}/health" >/dev/null 2>&1; do
+      if (( SECONDS > deadline )); then
+        echo "[aoi-terminals] share link: backend health timeout (skipped)"
+        break
+      fi
+      sleep 0.2
+    done
+
+    if curl -fsS "${BACKEND_HTTP}/health" >/dev/null 2>&1; then
+      cookie_jar="$(mktemp)"
+      cleanup_share() { rm -f "$cookie_jar"; }
+      trap cleanup_share EXIT
+
+      if curl -fsS -c "$cookie_jar" -H 'Content-Type: application/json' -d "{\"token\":\"${final_token}\"}" "${BACKEND_HTTP}/auth" >/dev/null 2>&1; then
+        json="$(curl -fsS -b "$cookie_jar" -X POST "${BACKEND_HTTP}/link-token" 2>/dev/null || true)"
+        one_time_token="$(printf "%s" "$json" | extract_json_string "token" || true)"
+        expires_at="$(printf "%s" "$json" | sed -n 's/.*"expiresAt"[[:space:]]*:[[:space:]]*\\([0-9][0-9]*\\).*/\\1/p' | head -n 1 || true)"
+
+        if [[ -n "$one_time_token" ]]; then
+          base_url="${TERMINAL_PUBLIC_BASE_URL:-http://localhost:3101}"
+          share_url="${base_url%/}/?token=${one_time_token}"
+          echo "---"
+          echo "Share URL (one-time):"
+          echo "${share_url}"
+          if [[ -n "${expires_at:-}" ]]; then
+            echo "ExpiresAt(ms): ${expires_at}"
+          fi
+          if command -v qrencode >/dev/null 2>&1; then
+            qrencode -t ANSIUTF8 "${share_url}"
+          else
+            echo "(QR) qrencode not found. Install to print QR in terminal:"
+            echo "  sudo apt-get update && sudo apt-get install -y qrencode"
+          fi
+        else
+          echo "[aoi-terminals] share link: could not get one-time token (skipped)"
+        fi
+      else
+        echo "[aoi-terminals] share link: auth failed (skipped)"
+      fi
+    fi
+  else
+    echo "[aoi-terminals] share link: curl not found (skipped)"
+  fi
+fi
+
 echo "Stop: (cd \"$BASE_DIR\" && ${COMPOSE_LABEL} down)"
 echo "Logs: (cd \"$BASE_DIR\" && ${COMPOSE_LABEL} logs -f)"
