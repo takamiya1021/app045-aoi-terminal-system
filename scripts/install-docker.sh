@@ -49,8 +49,19 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! docker compose version >/dev/null 2>&1; then
-  echo "[aoi-terminals] docker compose が使えへん。Docker Compose v2 を有効にしてな。"
+COMPOSE=()
+COMPOSE_LABEL=""
+if docker compose version >/dev/null 2>&1; then
+  COMPOSE=(docker compose)
+  COMPOSE_LABEL="docker compose"
+elif command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
+  # 一部環境（特にWSL/古めのLinux）では v1 系の docker-compose が入ってることがある
+  COMPOSE=(docker-compose)
+  COMPOSE_LABEL="docker-compose"
+else
+  echo "[aoi-terminals] docker compose が使えへん（v2 plugin も docker-compose も見つからん）。"
+  echo "  - Docker Desktop を使ってるなら: Settings → Resources → WSL Integration でこのUbuntuをON"
+  echo "  - Ubuntu側に入れるなら: sudo apt-get update && sudo apt-get install -y docker-compose-plugin"
   exit 1
 fi
 
@@ -123,8 +134,11 @@ else
 fi
 
 echo "[aoi-terminals] Starting containers in: $BASE_DIR"
-docker compose --env-file "$BASE_DIR/.env" -f "$BASE_DIR/docker-compose.yml" pull
-docker compose --env-file "$BASE_DIR/.env" -f "$BASE_DIR/docker-compose.yml" up -d
+(
+  cd "$BASE_DIR"
+  "${COMPOSE[@]}" pull
+  "${COMPOSE[@]}" up -d
+)
 
 echo "---"
 echo "[aoi-terminals] OK"
@@ -143,5 +157,5 @@ if [[ -n "$final_token" ]]; then
 else
   echo "Login token: see ${BASE_DIR}/.env (TERMINAL_TOKEN=...)"
 fi
-echo "Stop: docker compose --env-file \"$BASE_DIR/.env\" -f \"$BASE_DIR/docker-compose.yml\" down"
-echo "Logs: docker compose --env-file \"$BASE_DIR/.env\" -f \"$BASE_DIR/docker-compose.yml\" logs -f"
+echo "Stop: (cd \"$BASE_DIR\" && ${COMPOSE_LABEL} down)"
+echo "Logs: (cd \"$BASE_DIR\" && ${COMPOSE_LABEL} logs -f)"
