@@ -43,6 +43,13 @@ Tailscaleなどのプライベートネットワーク越しに、ワンタイ�
 - Docker（推奨）: Docker Desktop もしくは Docker Engine + Compose
 - Dockerを使わない場合: Node.js 20+ / npm / tmux
 
+### WSL（Dockerなし）最短起動
+
+```bash
+npm run setup
+npm start
+```
+
 ### 最短起動（npmみたいに1コマンド）
 
 GitHub Container Registry（GHCR）に公開した「ビルド済みイメージ」を pull して起動します（ローカルビルド不要）。

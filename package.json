@@ -7,6 +7,9 @@
     "doc": "doc"
   },
   "scripts": {
+    "setup": "npm --prefix backend ci && npm --prefix frontend ci",
+    "start": "./scripts/start.sh",
+    "stop": "./scripts/stop.sh",
     "test": "npm run test:frontend && npm run test:backend && npm run test:e2e",
     "test:frontend": "cd frontend && npm test",
     "test:backend": "cd backend && npm test",
