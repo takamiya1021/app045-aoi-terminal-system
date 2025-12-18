@@ -30,6 +30,54 @@ PY
   dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 | tr -d '\n' | tr '+/' '-_' | tr -d '='
 }
 
+detect_public_base_url() {
+  local port="${FRONTEND_PORT:-3101}"
+
+  if [[ -n "${TERMINAL_PUBLIC_BASE_URL:-}" ]]; then
+    printf "%s" "${TERMINAL_PUBLIC_BASE_URL%/}"
+    return 0
+  fi
+
+  # Tailscale前提: MagicDNS(hostname) -> Tailscale IPv4 の順で探す（取れなければ後段へ）
+  if command -v tailscale >/dev/null 2>&1; then
+    if command -v python3 >/dev/null 2>&1; then
+      local dns_name=""
+      dns_name="$(
+        tailscale status --json 2>/dev/null | python3 - <<'PY'
+import sys, json
+try:
+  j = json.load(sys.stdin)
+  dns = (((j.get("Self") or {}).get("DNSName")) or "").rstrip(".")
+  print(dns, end="")
+except Exception:
+  pass
+PY
+      )"
+      if [[ -n "$dns_name" ]]; then
+        printf "http://%s:%s" "$dns_name" "$port"
+        return 0
+      fi
+    fi
+
+    local ts_ip=""
+    ts_ip="$(tailscale ip -4 2>/dev/null | head -n 1 || true)"
+    if [[ -n "$ts_ip" ]]; then
+      printf "http://%s:%s" "$ts_ip" "$port"
+      return 0
+    fi
+  fi
+
+  # ベストエフォート: WSL内IPを拾う（LANから見える保証はない）
+  local ip_guess=""
+  ip_guess="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
+  if [[ -n "$ip_guess" ]]; then
+    printf "http://%s:%s" "$ip_guess" "$port"
+    return 0
+  fi
+
+  printf "http://localhost:%s" "$port"
+}
+
 read_env_value() {
   local key="$1"
   local file="$2"
@@ -42,6 +90,42 @@ read_env_value() {
     return 1
   fi
   printf "%s" "${line#${key}=}"
+}
+
+ensure_env_value() {
+  local key="$1"
+  local value="$2"
+  local file="$3"
+
+  if grep -qE "^${key}=" "$file"; then
+    # 値中に / があり得るので区切りは | を使う
+    sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+  else
+    printf "\n%s=%s\n" "$key" "$value" >>"$file"
+  fi
+}
+
+append_allowed_origin_if_missing() {
+  local origin="$1"
+  local file="$2"
+
+  if [[ -z "$origin" ]]; then
+    return 0
+  fi
+
+  local current=""
+  current="$(read_env_value "ALLOWED_ORIGINS" "$file" || true)"
+  if [[ -z "$current" ]]; then
+    ensure_env_value "ALLOWED_ORIGINS" "$origin" "$file"
+    return 0
+  fi
+
+  # すでに含まれてたら何もしない
+  if printf "%s" "$current" | tr ',' '\n' | grep -Fxq "$origin"; then
+    return 0
+  fi
+
+  ensure_env_value "ALLOWED_ORIGINS" "${current},${origin}" "$file"
 }
 
 extract_json_string() {
@@ -81,6 +165,9 @@ TAG="${AOI_TERMINALS_TAG:-latest}"
 
 BASE_DIR="${AOI_TERMINALS_DIR:-$HOME/.aoi-terminals}"
 mkdir -p "$BASE_DIR"
+
+PUBLIC_BASE_URL="$(detect_public_base_url)"
+PUBLIC_ORIGIN="${PUBLIC_BASE_URL%/}"
 
 cat >"$BASE_DIR/docker-compose.yml" <<'YAML'
 services:
@@ -123,7 +210,8 @@ if [[ ! -f "$BASE_DIR/.env" ]]; then
 AOI_TERMINALS_IMAGE_REPO=${IMAGE_REPO}
 AOI_TERMINALS_TAG=${TAG}
 TERMINAL_TOKEN=${TERMINAL_TOKEN}
-ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3101,http://127.0.0.1:3101}
+TERMINAL_PUBLIC_BASE_URL=${PUBLIC_BASE_URL}
+ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3101,http://127.0.0.1:3101,${PUBLIC_ORIGIN}}
 TERMINAL_LINK_TOKEN_TTL_SECONDS=${TERMINAL_LINK_TOKEN_TTL_SECONDS:-300}
 TERMINAL_COOKIE_SECURE=${TERMINAL_COOKIE_SECURE:-0}
 BACKEND_NODE_ENV=${BACKEND_NODE_ENV:-development}
@@ -136,6 +224,14 @@ else
     else
       printf "\nTERMINAL_TOKEN=%s\n" "$TERMINAL_TOKEN" >>"$BASE_DIR/.env"
     fi
+  fi
+
+  # 既存 .env にも “共有URLのベース” と “許可Origin” を足しとく（未指定時だけ）
+  if [[ -z "${TERMINAL_PUBLIC_BASE_URL:-}" ]]; then
+    ensure_env_value "TERMINAL_PUBLIC_BASE_URL" "$PUBLIC_BASE_URL" "$BASE_DIR/.env"
+  fi
+  if [[ -z "${ALLOWED_ORIGINS:-}" ]]; then
+    append_allowed_origin_if_missing "$PUBLIC_ORIGIN" "$BASE_DIR/.env"
   fi
 fi
 
@@ -188,7 +284,13 @@ if [[ "${AOI_TERMINALS_PRINT_SHARE:-1}" != "0" ]] && [[ -n "$final_token" ]]; th
         expires_at="$(printf "%s" "$json" | sed -n 's/.*"expiresAt"[[:space:]]*:[[:space:]]*\\([0-9][0-9]*\\).*/\\1/p' | head -n 1 || true)"
 
         if [[ -n "$one_time_token" ]]; then
-          base_url="${TERMINAL_PUBLIC_BASE_URL:-http://localhost:3101}"
+          base_url="${TERMINAL_PUBLIC_BASE_URL:-}"
+          if [[ -z "$base_url" ]]; then
+            base_url="$(read_env_value "TERMINAL_PUBLIC_BASE_URL" "$BASE_DIR/.env" || true)"
+          fi
+          if [[ -z "$base_url" ]]; then
+            base_url="$PUBLIC_BASE_URL"
+          fi
           share_url="${base_url%/}/?token=${one_time_token}"
           echo "---"
           echo "Share URL (one-time):"
