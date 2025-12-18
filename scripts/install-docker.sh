@@ -301,8 +301,18 @@ if [[ "${AOI_TERMINALS_PRINT_SHARE:-1}" != "0" ]] && [[ -n "$final_token" ]]; th
           if command -v qrencode >/dev/null 2>&1; then
             qrencode -t ANSIUTF8 "${share_url}"
           else
-            echo "(QR) qrencode not found. Install to print QR in terminal:"
-            echo "  sudo apt-get update && sudo apt-get install -y qrencode"
+            # 依存を増やしたくないので、基本は Docker で一時コンテナを起動してQRを出す
+            if command -v docker >/dev/null 2>&1; then
+              if docker run --rm --pull=always -e SHARE_URL="${share_url}" alpine:3.20 sh -c 'apk add --no-cache qrencode >/dev/null 2>&1 && qrencode -t ANSIUTF8 "$SHARE_URL"' 2>/dev/null; then
+                :
+              else
+                echo "(QR) qrencode not found (and docker fallback failed). Install to print QR in terminal:"
+                echo "  sudo apt-get update && sudo apt-get install -y qrencode"
+              fi
+            else
+              echo "(QR) qrencode not found. Install to print QR in terminal:"
+              echo "  sudo apt-get update && sudo apt-get install -y qrencode"
+            fi
           fi
         else
           echo "[aoi-terminals] share link: could not get one-time token (skipped)"
