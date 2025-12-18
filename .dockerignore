@@ -1,0 +1,10 @@
+**/node_modules
+**/.next
+**/dist
+**/playwright-report
+**/test-results
+**/.swc
+**/.git
+**/.DS_Store
+**/*.log
+nanobanana-output

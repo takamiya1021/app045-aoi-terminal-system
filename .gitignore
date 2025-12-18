@@ -1,0 +1,21 @@
+.env
+.env.*
+!.env.example
+!.env.docker.example
+
+# Node / Next build artifacts
+**/node_modules/
+**/dist/
+**/.next/
+**/.swc/
+**/coverage/
+**/playwright-report/
+**/test-results/
+**/.npm-cache/
+
+# Logs / OS
+**/*.log
+**/.DS_Store
+
+# Nested git dirs (このリポジトリ配下に紛れ込んでるやつ対策)
+frontend/.git/

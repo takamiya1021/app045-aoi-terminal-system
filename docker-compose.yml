@@ -1,0 +1,29 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "3102:3102"
+    environment:
+      PORT: "3102"
+      # ブラウザは http(s)://<host>:3101 から来る。credentials(cookie)使うから * は不可。
+      # Tailscale/LANで使う場合は .env でホスト名込みのOriginを入れてな（例: http://star.tailxxxx.ts.net:3101）
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3101,http://127.0.0.1:3101}
+      # 未指定時、開発用に 'valid_token' がログイントークンになる（auth.ts参照）
+      TERMINAL_TOKEN: ${TERMINAL_TOKEN:-}
+      TERMINAL_LINK_TOKEN_TTL_SECONDS: ${TERMINAL_LINK_TOKEN_TTL_SECONDS:-300}
+      # DockerはまずHTTP運用が多いから、Cookie secureは明示でOFF推奨
+      TERMINAL_COOKIE_SECURE: ${TERMINAL_COOKIE_SECURE:-0}
+      NODE_ENV: ${BACKEND_NODE_ENV:-development}
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "3101:3101"
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped

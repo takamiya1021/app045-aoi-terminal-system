@@ -1,0 +1,4 @@
+{
+  "port": 3102,
+  "allowedOrigins": ["http://localhost:3101"]
+}

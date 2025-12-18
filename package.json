@@ -1,0 +1,20 @@
+{
+  "name": "improved-terminal-system",
+  "version": "1.0.0",
+  "description": "Claude Code on the Webに触発された、モダンなWebベースターミナルシステム",
+  "main": "index.js",
+  "directories": {
+    "doc": "doc"
+  },
+  "scripts": {
+    "test": "npm run test:frontend && npm run test:backend && npm run test:e2e",
+    "test:frontend": "cd frontend && npm test",
+    "test:backend": "cd backend && npm test",
+    "test:e2e": "cd frontend && npx playwright test",
+    "test:e2e:existing": "cd frontend && npx playwright test --config playwright.config.existing.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

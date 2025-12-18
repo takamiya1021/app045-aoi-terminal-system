@@ -1,0 +1,31 @@
+FROM node:20-bookworm-slim AS build
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY next.config.mjs postcss.config.mjs tailwind.config.ts tsconfig.json next-env.d.ts ./
+COPY public ./public
+COPY src ./src
+
+RUN npm run build && npm prune --omit=dev
+
+FROM node:20-bookworm-slim AS runtime
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3101
+
+COPY --from=build /app/package.json /app/package-lock.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/next.config.mjs ./next.config.mjs
+COPY --from=build /app/public ./public
+COPY --from=build /app/.next ./.next
+
+EXPOSE 3101
+
+USER node
+CMD ["node_modules/.bin/next", "start", "--hostname", "0.0.0.0", "--port", "3101"]
+

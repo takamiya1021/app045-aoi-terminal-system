@@ -1,0 +1,24 @@
+services:
+  backend:
+    image: ${AOI_TERMINALS_IMAGE_REPO}-backend:${AOI_TERMINALS_TAG:-latest}
+    ports:
+      - "3102:3102"
+    environment:
+      PORT: "3102"
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3101,http://127.0.0.1:3101}
+      TERMINAL_TOKEN: ${TERMINAL_TOKEN:-valid_token}
+      TERMINAL_LINK_TOKEN_TTL_SECONDS: ${TERMINAL_LINK_TOKEN_TTL_SECONDS:-300}
+      TERMINAL_COOKIE_SECURE: ${TERMINAL_COOKIE_SECURE:-0}
+      NODE_ENV: ${BACKEND_NODE_ENV:-development}
+    restart: unless-stopped
+
+  frontend:
+    image: ${AOI_TERMINALS_IMAGE_REPO}-frontend:${AOI_TERMINALS_TAG:-latest}
+    depends_on:
+      - backend
+    ports:
+      - "3101:3101"
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped
+

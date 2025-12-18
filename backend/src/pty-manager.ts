@@ -1,0 +1,204 @@
+import * as pty from 'node-pty';
+import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { logger } from './logger.js';
+
+export interface TerminalSession {
+  pid: number;
+  write: (data: string) => void;
+  resize: (cols: number, rows: number) => void;
+  kill: () => void;
+}
+
+class FallbackSession implements TerminalSession {
+  pid: number;
+  private cwd: string;
+  private readonly env: NodeJS.ProcessEnv;
+  private readonly onData: (data: string) => void;
+  private buffer = '';
+  private running: ChildProcessWithoutNullStreams | null = null;
+
+  constructor(sessionId: string, onData: (data: string) => void) {
+    this.pid = -1;
+    this.cwd = process.env.HOME || process.cwd();
+    this.env = { ...process.env };
+    this.onData = onData;
+
+    this.onData(`(fallback) PTYが利用できへん環境やから、簡易シェルで動いとるで。\r\n`);
+    this.onData(`${this.cwd}$ `);
+    logger.warn(`Session ${sessionId} running in fallback (no PTY) mode.`);
+  }
+
+  resize(_cols: number, _rows: number): void {
+    // no-op (no PTY)
+  }
+
+  kill(): void {
+    if (this.running) {
+      this.running.kill('SIGKILL');
+      this.running = null;
+    }
+  }
+
+  write(data: string): void {
+    for (const ch of data) {
+      if (ch === '\r' || ch === '\n') {
+        const command = this.buffer.trim();
+        this.buffer = '';
+        this.onData('\r\n');
+        if (command.length === 0) {
+          this.onData(`${this.cwd}$ `);
+          continue;
+        }
+
+        // built-in: cd
+        if (command === 'cd' || command.startsWith('cd ')) {
+          const target = command === 'cd' ? (process.env.HOME || this.cwd) : command.slice(3).trim();
+          const nextCwd = target.startsWith('/') ? target : `${this.cwd}/${target}`;
+          this.cwd = nextCwd.replace(/\/+$/, '') || '/';
+          this.onData(`${this.cwd}$ `);
+          continue;
+        }
+
+        this.runCommand(command);
+        continue;
+      }
+
+      if (ch === '\u007f') {
+        if (this.buffer.length > 0) {
+          this.buffer = this.buffer.slice(0, -1);
+          this.onData('\b \b');
+        }
+        continue;
+      }
+
+      // ignore escape sequences (arrows etc) for now
+      if (ch === '\u001b') continue;
+
+      this.buffer += ch;
+      this.onData(ch);
+    }
+  }
+
+  private runCommand(command: string): void {
+    if (this.running) {
+      this.onData(`\r\n(実行中のコマンドがあるで。終わるまで待ってな)\r\n${this.cwd}$ `);
+      return;
+    }
+
+    const child = spawn('bash', ['-lc', command], {
+      cwd: this.cwd,
+      env: this.env,
+      stdio: 'pipe',
+    });
+    this.running = child;
+    this.pid = child.pid ?? -1;
+
+    child.stdout.on('data', (chunk) => this.onData(chunk.toString('utf8')));
+    child.stderr.on('data', (chunk) => this.onData(chunk.toString('utf8')));
+    child.on('close', () => {
+      this.running = null;
+      this.onData(`\r\n${this.cwd}$ `);
+    });
+  }
+}
+
+export class PtyManager {
+  private sessions: Map<string, TerminalSession> = new Map();
+  private ptyAvailable: boolean | null = null;
+
+  isPtyAvailable(): boolean {
+    return this.ptyAvailable === true;
+  }
+
+  createSession(sessionId: string, onData: (data: string) => void): TerminalSession {
+    // Check if session already exists
+    if (this.sessions.has(sessionId)) {
+      logger.warn(`Session ${sessionId} already exists, killing old session`);
+      this.sessions.get(sessionId)?.kill();
+    }
+
+    const shell = process.env.SHELL || 'bash';
+    
+    try {
+      // For now, we are spawning a local shell. 
+      // In the future, this could be an SSH connection or wrapped in 'tmux'
+      const ptyProcess = pty.spawn(shell, [], {
+        name: 'xterm-color',
+        cols: 80,
+        rows: 24,
+        cwd: process.env.HOME || process.cwd(), // Provide a default if HOME is undefined
+        env: process.env as { [key: string]: string },
+      });
+
+      ptyProcess.onData((data) => {
+        onData(data);
+      });
+
+      ptyProcess.onExit((res) => {
+        logger.info(`Session ${sessionId} exited with code ${res.exitCode}`);
+        this.sessions.delete(sessionId);
+      });
+
+      this.ptyAvailable = true;
+      this.sessions.set(sessionId, ptyProcess as unknown as TerminalSession);
+      logger.info(`Created PTY session ${sessionId} (PID: ${ptyProcess.pid})`);
+
+      return ptyProcess as unknown as TerminalSession;
+    } catch (error) {
+      this.ptyAvailable = false;
+      logger.warn(`PTY spawn failed for session ${sessionId}. Falling back to non-PTY mode.`, error);
+      const fallback = new FallbackSession(sessionId, onData);
+      this.sessions.set(sessionId, fallback);
+      return fallback;
+    }
+  }
+
+  getSession(sessionId: string): TerminalSession | undefined {
+    return this.sessions.get(sessionId);
+  }
+
+  resize(sessionId: string, cols: number, rows: number): void {
+    if (cols <= 0 || rows <= 0) {
+      logger.warn(`Invalid resize dimensions for session ${sessionId}: ${cols}x${rows}`);
+      return;
+    }
+
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      try {
+        session.resize(cols, rows);
+        logger.info(`Resized session ${sessionId} to ${cols}x${rows}`);
+      } catch (error) {
+        logger.error(`Failed to resize session ${sessionId}`, error);
+      }
+    } else {
+      logger.warn(`Attempted to resize non-existent session ${sessionId}`);
+    }
+  }
+
+  write(sessionId: string, data: string): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      try {
+        session.write(data);
+      } catch (error) {
+        logger.error(`Failed to write to session ${sessionId}`, error);
+      }
+    } else {
+      logger.warn(`Attempted to write to non-existent session ${sessionId}`);
+    }
+  }
+
+  kill(sessionId: string): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      try {
+        session.kill();
+        this.sessions.delete(sessionId);
+        logger.info(`Killed session ${sessionId}`);
+      } catch (error) {
+        logger.error(`Failed to kill session ${sessionId}`, error);
+      }
+    }
+  }
+}
