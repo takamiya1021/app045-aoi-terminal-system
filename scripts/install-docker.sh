@@ -30,6 +30,20 @@ PY
   dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 | tr -d '\n' | tr '+/' '-_' | tr -d '='
 }
 
+read_env_value() {
+  local key="$1"
+  local file="$2"
+  if [[ ! -f "$file" ]]; then
+    return 1
+  fi
+  local line
+  line="$(grep -E "^${key}=" "$file" | tail -n 1 || true)"
+  if [[ -z "$line" ]]; then
+    return 1
+  fi
+  printf "%s" "${line#${key}=}"
+}
+
 if ! command -v docker >/dev/null 2>&1; then
   echo "[aoi-terminals] docker が見つからへん。Dockerを入れてからもう一回やってな。"
   exit 1
@@ -77,11 +91,15 @@ services:
     restart: unless-stopped
 YAML
 
-# 既存 .env があれば尊重。無ければ初期値を書く。
+# 既存 .env があれば基本は尊重。明示で TERMINAL_TOKEN を渡した時だけ上書きする。
+token_source="existing"
 if [[ ! -f "$BASE_DIR/.env" ]]; then
+  token_source="generated"
   # 未指定ならランダム発行（テスト/緊急用のつもりでも、デフォルト固定は危ない）
   if [[ -z "${TERMINAL_TOKEN:-}" ]]; then
     TERMINAL_TOKEN="$(generate_terminal_token)"
+  else
+    token_source="provided"
   fi
 
   cat >"$BASE_DIR/.env" <<ENV
@@ -93,6 +111,15 @@ TERMINAL_LINK_TOKEN_TTL_SECONDS=${TERMINAL_LINK_TOKEN_TTL_SECONDS:-300}
 TERMINAL_COOKIE_SECURE=${TERMINAL_COOKIE_SECURE:-0}
 BACKEND_NODE_ENV=${BACKEND_NODE_ENV:-development}
 ENV
+else
+  if [[ -n "${TERMINAL_TOKEN:-}" ]]; then
+    token_source="provided"
+    if grep -qE '^TERMINAL_TOKEN=' "$BASE_DIR/.env"; then
+      sed -i "s/^TERMINAL_TOKEN=.*/TERMINAL_TOKEN=${TERMINAL_TOKEN}/" "$BASE_DIR/.env"
+    else
+      printf "\nTERMINAL_TOKEN=%s\n" "$TERMINAL_TOKEN" >>"$BASE_DIR/.env"
+    fi
+  fi
 fi
 
 echo "[aoi-terminals] Starting containers in: $BASE_DIR"
@@ -102,8 +129,17 @@ docker compose --env-file "$BASE_DIR/.env" -f "$BASE_DIR/docker-compose.yml" up 
 echo "---"
 echo "[aoi-terminals] OK"
 echo "URL: http://localhost:3101"
-if [[ -n "${TERMINAL_TOKEN:-}" ]]; then
-  echo "Login token (generated this run): ${TERMINAL_TOKEN}"
+final_token="${TERMINAL_TOKEN:-}"
+if [[ -z "$final_token" ]]; then
+  final_token="$(read_env_value "TERMINAL_TOKEN" "$BASE_DIR/.env" || true)"
+fi
+
+if [[ -n "$final_token" ]]; then
+  case "$token_source" in
+    provided) echo "Login token (provided): ${final_token}" ;;
+    generated) echo "Login token (generated): ${final_token}" ;;
+    *) echo "Login token: ${final_token}" ;;
+  esac
 else
   echo "Login token: see ${BASE_DIR}/.env (TERMINAL_TOKEN=...)"
 fi

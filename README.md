@@ -52,7 +52,7 @@ curl -fsSL https://raw.githubusercontent.com/<OWNER>/<REPO>/main/scripts/install
   | AOI_TERMINALS_IMAGE_REPO=ghcr.io/<OWNER>/<REPO> bash
 ```
 
-※ `TERMINAL_TOKEN` は未指定なら自動生成され、`~/.aoi-terminals/.env` に保存されます。
+※ `TERMINAL_TOKEN` は未指定なら自動生成され、`~/.aoi-terminals/.env` に保存されます。任意のトークンを指定したい場合は `TERMINAL_TOKEN=...` を付けて実行してください。
 
 ### 手順（Docker推奨）
 
