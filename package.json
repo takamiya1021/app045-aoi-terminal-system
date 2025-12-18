@@ -1,10 +1,33 @@
 {
-  "name": "improved-terminal-system",
-  "version": "1.0.0",
-  "description": "Claude Code on the Webに触発された、モダンなWebベースターミナルシステム",
-  "main": "index.js",
+  "name": "@takamiya1021/aoi-terminals",
+  "version": "0.1.0",
+  "description": "WSL向けWebベースターミナル（tmux + Share QR）",
+  "bin": {
+    "aoi-terminals": "bin/aoi-terminals.cjs"
+  },
   "directories": {
     "doc": "doc"
+  },
+  "files": [
+    "bin/",
+    "backend/config/",
+    "backend/src/",
+    "backend/package.json",
+    "backend/package-lock.json",
+    "backend/tsconfig.json",
+    "backend/jest.config.cjs",
+    "frontend/public/",
+    "frontend/src/",
+    "frontend/package.json",
+    "frontend/package-lock.json",
+    "frontend/next.config.mjs",
+    "frontend/postcss.config.mjs",
+    "frontend/tailwind.config.ts",
+    "frontend/tsconfig.json",
+    "README.md"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "scripts": {
     "setup": "npm --prefix backend ci && npm --prefix frontend ci",
@@ -19,5 +42,11 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "qrcode-terminal": "^0.12.0"
+  }
 }

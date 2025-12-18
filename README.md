@@ -43,6 +43,14 @@ Tailscaleなどのプライベートネットワーク越しに、ワンタイ�
 - Docker（推奨）: Docker Desktop もしくは Docker Engine + Compose
 - Dockerを使わない場合: Node.js 20+ / npm / tmux
 
+### 配布（npm / GitHub Packages）
+
+```bash
+npm config set @takamiya1021:registry https://npm.pkg.github.com
+npm i -g @takamiya1021/aoi-terminals
+aoi-terminals
+```
+
 ### WSL（Dockerなし）最短起動
 
 ```bash
