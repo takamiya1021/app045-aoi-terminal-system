@@ -49,7 +49,7 @@ GitHub Container Registry（GHCR）に公開した「ビルド済みイメージ
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/<OWNER>/<REPO>/main/scripts/install-docker.sh \
-  | AOI_TERMINALS_IMAGE_REPO=ghcr.io/<OWNER>/<REPO> bash
+  | bash
 ```
 
 ※ `TERMINAL_TOKEN` は未指定なら自動生成され、`~/.aoi-terminals/.env` に保存されます。任意のトークンを指定したい場合は `TERMINAL_TOKEN=...` を付けて実行してください。

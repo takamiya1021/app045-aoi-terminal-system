@@ -155,10 +155,10 @@ else
   exit 1
 fi
 
-IMAGE_REPO="${AOI_TERMINALS_IMAGE_REPO:-}"
-if [[ -z "$IMAGE_REPO" ]]; then
-  echo "[aoi-terminals] AOI_TERMINALS_IMAGE_REPO が未指定やで。例: ghcr.io/<OWNER>/<REPO>"
-  exit 1
+DEFAULT_IMAGE_REPO="ghcr.io/takamiya1021/app045-aoi-terminal-system"
+IMAGE_REPO="${AOI_TERMINALS_IMAGE_REPO:-$DEFAULT_IMAGE_REPO}"
+if [[ -z "${AOI_TERMINALS_IMAGE_REPO:-}" ]]; then
+  echo "[aoi-terminals] AOI_TERMINALS_IMAGE_REPO 未指定やからデフォルト使うで: ${DEFAULT_IMAGE_REPO}"
 fi
 
 TAG="${AOI_TERMINALS_TAG:-latest}"
