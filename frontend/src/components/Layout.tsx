@@ -8,14 +8,14 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, headerRight }) => {
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-gray-100">
+    <div className="flex flex-col h-[100dvh] bg-gray-900 text-gray-100">
       <OfflineIndicator />
       <header className="flex-none p-4 bg-gray-800 border-b border-gray-700 flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-orange-400">Aoi-Terminals</h1>
         {headerRight ? <div className="flex items-center gap-2">{headerRight}</div> : null}
       </header>
-      
-      <main className="flex-grow overflow-hidden relative">
+
+      <main className="flex-grow overflow-auto relative">
         {children}
       </main>
 

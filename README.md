@@ -43,14 +43,6 @@ Tailscaleなどのプライベートネットワーク越しに、ワンタイ�
 - Docker（推奨）: Docker Desktop もしくは Docker Engine + Compose
 - Dockerを使わない場合: Node.js 20+ / npm / tmux
 
-### 配布（npm / GitHub Packages）
-
-```bash
-npm config set @takamiya1021:registry https://npm.pkg.github.com
-npm i -g @takamiya1021/aoi-terminals
-aoi-terminals
-```
-
 ### WSL（Dockerなし）最短起動
 
 ```bash
@@ -130,13 +122,8 @@ npx playwright test --config playwright.config.existing.ts
   - `ghcr.io/<OWNER>/<REPO>-backend:latest`
   - `ghcr.io/<OWNER>/<REPO>-frontend:latest`
 
-- Dockerでの配布・デプロイを想定しています（`docker compose up -d --build` または “最短起動”）。
+- Dockerでの配布・デプロイを想定しています（`docker compose up -d --build` または "最短起動"）。
 - リバースプロキシ（TLS終端）配下に置く場合は、`ALLOWED_ORIGINS` とCookie設定を環境に合わせて調整してください。
-
-### npmパッケージ配布（メンテナ向け）
-
-- `npm-v*` タグpushで GitHub Packages に publish します: `.github/workflows/publish-npm-github-packages.yml`
-- パッケージ名: `@takamiya1021/aoi-terminals`
 
 ## 開発ドキュメントリンク
 

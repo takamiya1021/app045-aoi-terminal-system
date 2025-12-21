@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Terminal } from 'xterm';
+import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 
@@ -89,7 +89,7 @@ export const useTerminal = (options?: UseTerminalOptions): UseTerminalReturn => 
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [terminalContainer, initialCols, initialRows]); 
+  }, [terminalContainer, initialCols, initialRows]);
 
   return {
     terminal: xtermInstance.current,

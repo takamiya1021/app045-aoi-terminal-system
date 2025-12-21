@@ -2,11 +2,18 @@ import { randomBytes } from 'node:crypto';
 
 export const SESSION_COOKIE_NAME = 'its_session';
 
-const SESSION_TTL_MS = 1000 * 60 * 60 * 24; // 24h
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24; // 24h (通常・初回QR・追加QR)
+const SHARE_SESSION_TTL_MS = 1000 * 60 * 60 * 6; // 6h (シェア用QR)
 const sessions = new Map<string, number>(); // sessionId -> expiresAt(ms)
 
 const DEFAULT_LINK_TOKEN_TTL_MS = 1000 * 60 * 5; // 5 min
-const linkTokens = new Map<string, number>(); // token -> expiresAt(ms)
+
+interface LinkTokenData {
+  expiresAt: number;
+  isShare: boolean; // シェア用QRかどうか
+}
+
+const linkTokens = new Map<string, LinkTokenData>(); // token -> data
 
 function getLinkTokenTtlMs(): number {
   const raw = process.env.TERMINAL_LINK_TOKEN_TTL_SECONDS;
@@ -18,8 +25,8 @@ function getLinkTokenTtlMs(): number {
 
 function cleanupExpiredLinkTokens(): void {
   const now = Date.now();
-  for (const [token, expiresAt] of linkTokens.entries()) {
-    if (expiresAt <= now) linkTokens.delete(token);
+  for (const [token, data] of linkTokens.entries()) {
+    if (data.expiresAt <= now) linkTokens.delete(token);
   }
 }
 
@@ -35,37 +42,38 @@ export function getExpectedLoginToken(): string | null {
   return null;
 }
 
-export function createOneTimeLoginToken(): { token: string; expiresAt: number } {
+export function createOneTimeLoginToken(isShare = false): { token: string; expiresAt: number } {
   cleanupExpiredLinkTokens();
   const token = randomBytes(24).toString('base64url');
   const expiresAt = Date.now() + getLinkTokenTtlMs();
-  linkTokens.set(token, expiresAt);
+  linkTokens.set(token, { expiresAt, isShare });
   return { token, expiresAt };
 }
 
-export function consumeOneTimeLoginToken(token: unknown): boolean {
-  if (typeof token !== 'string' || token.trim() === '') return false;
+export function consumeOneTimeLoginToken(token: unknown): { valid: boolean; isShare: boolean } {
+  if (typeof token !== 'string' || token.trim() === '') return { valid: false, isShare: false };
   cleanupExpiredLinkTokens();
-  const expiresAt = linkTokens.get(token);
-  if (!expiresAt) return false;
-  if (Date.now() > expiresAt) {
+  const data = linkTokens.get(token);
+  if (!data) return { valid: false, isShare: false };
+  if (Date.now() > data.expiresAt) {
     linkTokens.delete(token);
-    return false;
+    return { valid: false, isShare: false };
   }
   linkTokens.delete(token); // one-time
-  return true;
+  return { valid: true, isShare: data.isShare };
 }
 
-export function verifyLoginToken(token: unknown): boolean {
-  if (typeof token !== 'string') return false;
+export function verifyLoginToken(token: unknown): { valid: boolean; isShare: boolean } {
+  if (typeof token !== 'string') return { valid: false, isShare: false };
   const expected = getExpectedLoginToken();
-  if (expected && token === expected) return true;
+  if (expected && token === expected) return { valid: true, isShare: false }; // 通常トークンはシェアではない
   return consumeOneTimeLoginToken(token);
 }
 
-export function createSession(): string {
+export function createSession(isShare = false): string {
   const sessionId = randomBytes(32).toString('base64url');
-  const expiresAt = Date.now() + SESSION_TTL_MS;
+  const ttl = isShare ? SHARE_SESSION_TTL_MS : SESSION_TTL_MS;
+  const expiresAt = Date.now() + ttl;
   sessions.set(sessionId, expiresAt);
   return sessionId;
 }

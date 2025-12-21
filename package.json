@@ -2,14 +2,10 @@
   "name": "@takamiya1021/aoi-terminals",
   "version": "0.1.0",
   "description": "WSL向けWebベースターミナル（tmux + Share QR）",
-  "bin": {
-    "aoi-terminals": "bin/aoi-terminals.cjs"
-  },
   "directories": {
     "doc": "doc"
   },
   "files": [
-    "bin/",
     "backend/config/",
     "backend/src/",
     "backend/package.json",
@@ -26,9 +22,6 @@
     "frontend/tsconfig.json",
     "README.md"
   ],
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "scripts": {
     "setup": "npm --prefix backend ci && npm --prefix frontend ci",
     "start": "./scripts/start.sh",
