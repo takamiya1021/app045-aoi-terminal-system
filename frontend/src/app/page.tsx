@@ -21,6 +21,8 @@ export default function Home() {
   const incomingBufferRef = useRef<string[]>([]);
   const [incomingTick, setIncomingTick] = useState(0);
   const lastInputRef = useRef<{ data: string; timestamp: number } | null>(null);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const baselineViewportRef = useRef<number | null>(null);
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authTokenInput, setAuthTokenInput] = useState('');
@@ -114,6 +116,90 @@ export default function Home() {
   );
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const threshold = 120;
+    const updateKeyboardState = () => {
+      const viewport = window.visualViewport;
+      const layoutHeight = document.documentElement.clientHeight;
+      const keyboardHeight = viewport ? Math.max(0, layoutHeight - viewport.height - viewport.offsetTop) : 0;
+      setIsKeyboardOpen(keyboardHeight > threshold);
+    };
+
+    updateKeyboardState();
+    const viewport = window.visualViewport;
+    viewport?.addEventListener('resize', updateKeyboardState);
+    viewport?.addEventListener('scroll', updateKeyboardState);
+    window.addEventListener('resize', updateKeyboardState);
+
+    return () => {
+      viewport?.removeEventListener('resize', updateKeyboardState);
+      viewport?.removeEventListener('scroll', updateKeyboardState);
+      window.removeEventListener('resize', updateKeyboardState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const threshold = 120;
+    const updateKeyboardState = () => {
+      const viewport = window.visualViewport;
+      const currentViewportHeight = viewport?.height ?? window.innerHeight;
+      if (baselineViewportRef.current === null) {
+        baselineViewportRef.current = currentViewportHeight;
+      }
+      const baseline = baselineViewportRef.current ?? currentViewportHeight;
+      const keyboardHeight = Math.max(0, baseline - currentViewportHeight);
+      const nextOpen = keyboardHeight > threshold;
+      setIsKeyboardOpen(nextOpen);
+    };
+
+    updateKeyboardState();
+    const viewport = window.visualViewport;
+    viewport?.addEventListener('resize', updateKeyboardState);
+    viewport?.addEventListener('scroll', updateKeyboardState);
+    window.addEventListener('resize', updateKeyboardState);
+
+    return () => {
+      viewport?.removeEventListener('resize', updateKeyboardState);
+      viewport?.removeEventListener('scroll', updateKeyboardState);
+      window.removeEventListener('resize', updateKeyboardState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const body = document.body;
+    const html = document.documentElement;
+    const prevBodyOverflow = body.style.overflow;
+    const prevBodyTouchAction = body.style.touchAction;
+    const prevHtmlOverscroll = html.style.overscrollBehavior;
+    const prevHtmlOverflow = html.style.overflow;
+
+    if (isKeyboardOpen) {
+      body.style.overflow = 'hidden';
+      body.style.touchAction = 'none';
+      html.style.overscrollBehavior = 'none';
+      html.style.overflow = 'hidden';
+      window.scrollTo(0, 0);
+    } else {
+      body.style.overflow = prevBodyOverflow;
+      body.style.touchAction = prevBodyTouchAction;
+      html.style.overscrollBehavior = prevHtmlOverscroll;
+      html.style.overflow = prevHtmlOverflow;
+    }
+
+    return () => {
+      body.style.overflow = prevBodyOverflow;
+      body.style.touchAction = prevBodyTouchAction;
+      html.style.overscrollBehavior = prevHtmlOverscroll;
+      html.style.overflow = prevHtmlOverflow;
+    };
+  }, [isKeyboardOpen]);
+
+  useEffect(() => {
     // 互換: 旧URL（/?token=...）
     // - one-time token をURLに載せるので、成功したら即URLから消す
     // - Next dev (StrictMode) は mount/unmount を挟むことがあるため、
@@ -175,9 +261,9 @@ export default function Home() {
               return;
             }
 
-        // /auth 成功後はまず URL から token を消す（ワンタイムなので残さない）
-        window.history.replaceState(null, '', window.location.pathname);
-        setAuthError(null);
+            // /auth 成功後はまず URL から token を消す（ワンタイムなので残さない）
+            window.history.replaceState(null, '', window.location.pathname);
+            setAuthError(null);
           } catch (err) {
             setIsAuthenticated(false);
             console.error('[DEBUG] Auto-login error:', err);
@@ -435,7 +521,7 @@ export default function Home() {
             )}
           </div>
         </div>
-        {isAuthenticated && (
+        {isAuthenticated && !isKeyboardOpen && (
           <div className="flex flex-col border-t border-slate-700 bg-slate-800">
             <TmuxPanel onSendCommand={handleTmuxCommand} />
             <div data-testid="control-panel">

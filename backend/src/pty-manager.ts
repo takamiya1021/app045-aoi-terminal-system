@@ -118,10 +118,11 @@ export class PtyManager {
     }
 
     const shell = process.env.SHELL || 'bash';
+    const useTmux = !['0', 'false', 'no'].includes(String(process.env.TERMINAL_USE_TMUX || 'true').toLowerCase());
+    const tmuxSessionName = (process.env.TERMINAL_TMUX_SESSION || `its-${sessionId}`).replace(/[^a-zA-Z0-9_-]/g, '-');
     
     try {
-      // For now, we are spawning a local shell. 
-      // In the future, this could be an SSH connection or wrapped in 'tmux'
+      // 常にシェルを起動しておき、tmuxはその中で起動する（Detach後に戻れるように）
       const ptyProcess = pty.spawn(shell, [], {
         name: 'xterm-color',
         cols: 80,
@@ -142,6 +143,11 @@ export class PtyManager {
       this.ptyAvailable = true;
       this.sessions.set(sessionId, ptyProcess as unknown as TerminalSession);
       logger.info(`Created PTY session ${sessionId} (PID: ${ptyProcess.pid})`);
+
+      if (useTmux) {
+        // tmuxを起動してアタッチ（Detachしてもシェルが残る）
+        ptyProcess.write(`tmux new-session -A -s ${tmuxSessionName}\r`);
+      }
 
       return ptyProcess as unknown as TerminalSession;
     } catch (error) {

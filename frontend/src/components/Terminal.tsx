@@ -68,8 +68,10 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ onData, onResize,
     if (!container || xtermInstance.current) return;
 
     let disposed = false;
-    let rafId: number | null = null;
+    let initRafId: number | null = null;
+    let fitRafId: number | null = null;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let dataDisposable: { dispose: () => void } | null = null;
 
     const safeFitAndReportSize = () => {
       const term = xtermInstance.current;
@@ -80,6 +82,9 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ onData, onResize,
 
       const rect = el.getBoundingClientRect();
       if (rect.width < 2 || rect.height < 2) return;
+
+      const renderDimensions = (term as any)?._core?._renderService?.dimensions;
+      if (!renderDimensions) return;
 
       try {
         fit.fit();
@@ -96,59 +101,95 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ onData, onResize,
       }
     };
 
-    console.log('Initializing xterm.js...');
-    const terminal = new Terminal({
-      cursorBlink: true,
-      theme: { background: '#0F172A', foreground: '#F3F4F6' },
-      convertEol: true,
-      scrollback: 5000,
-    });
-
-    const fitAddon = new FitAddon();
-    terminal.loadAddon(fitAddon);
-
-    terminal.open(container);
-
-    xtermInstance.current = terminal;
-    fitAddonInstance.current = fitAddon;
-
-    const dataDisposable = terminal.onData((data) => onDataRef.current?.(data));
-
-    // 初回表示のタイミングを安定させる（レイアウト確定後にfit/focus）
-    if (typeof requestAnimationFrame === 'function') {
-      rafId = requestAnimationFrame(() => {
+    const scheduleFit = () => {
+      if (disposed) return;
+      if (fitRafId !== null && typeof cancelAnimationFrame === 'function') return;
+      if (typeof requestAnimationFrame === 'function') {
+        fitRafId = requestAnimationFrame(() => {
+          fitRafId = null;
+          safeFitAndReportSize();
+        });
+      } else {
         safeFitAndReportSize();
-        terminal.focus();
+      }
+    };
+
+    const initXterm = () => {
+      if (disposed) return;
+      if (!terminalRef.current || !terminalRef.current.isConnected) return;
+
+      console.log('Initializing xterm.js...');
+      const terminal = new Terminal({
+        cursorBlink: true,
+        theme: { background: '#0F172A', foreground: '#F3F4F6' },
+        convertEol: true,
+        scrollback: 5000,
       });
-    } else {
-      timeoutId = setTimeout(() => {
-        safeFitAndReportSize();
-        terminal.focus();
-      }, 0);
-    }
 
-    if (typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver(() => safeFitAndReportSize());
-      observer.observe(container);
-      resizeObserverRef.current = observer;
-    }
+      const fitAddon = new FitAddon();
+      terminal.loadAddon(fitAddon);
 
-    // バッファ放出（open後にまとめて書く）
-    if (pendingData.current.length > 0) {
-      for (const data of pendingData.current) terminal.write(data);
-      pendingData.current = [];
-    }
+      terminal.open(container);
 
-    console.log('xterm.js initialized and open.');
+      xtermInstance.current = terminal;
+      fitAddonInstance.current = fitAddon;
+
+      dataDisposable = terminal.onData((data) => onDataRef.current?.(data));
+
+      if (typeof requestAnimationFrame === 'function') {
+        initRafId = requestAnimationFrame(() => {
+          scheduleFit();
+          terminal.focus();
+        });
+      } else {
+        timeoutId = setTimeout(() => {
+          scheduleFit();
+          terminal.focus();
+        }, 0);
+      }
+
+      if (typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(() => scheduleFit());
+        observer.observe(container);
+        resizeObserverRef.current = observer;
+      }
+
+      // バッファ放出（open後にまとめて書く）
+      if (pendingData.current.length > 0) {
+        for (const data of pendingData.current) terminal.write(data);
+        pendingData.current = [];
+      }
+
+      console.log('xterm.js initialized and open.');
+
+    };
+
+    const waitForContainerReady = () => {
+      if (disposed) return;
+      const el = terminalRef.current;
+      if (!el || !el.isConnected) {
+        initRafId = requestAnimationFrame(waitForContainerReady);
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 2 || rect.height < 2) {
+        initRafId = requestAnimationFrame(waitForContainerReady);
+        return;
+      }
+      initXterm();
+    };
+
+    initRafId = requestAnimationFrame(waitForContainerReady);
 
     return () => {
       disposed = true;
-      dataDisposable.dispose();
-      if (rafId !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(rafId);
+      if (initRafId !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(initRafId);
+      if (fitRafId !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(fitRafId);
       if (timeoutId !== null) clearTimeout(timeoutId);
+      dataDisposable?.dispose();
       resizeObserverRef.current?.disconnect();
       resizeObserverRef.current = null;
-      terminal.dispose();
+      xtermInstance.current?.dispose();
       xtermInstance.current = null;
       fitAddonInstance.current = null;
       lastReportedSize.current = null;

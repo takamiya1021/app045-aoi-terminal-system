@@ -53,7 +53,7 @@ const TmuxPanel: React.FC<TmuxPanelProps> = ({ onSendCommand }) => {
             {renderButton('Split Vertical (%)', 'split-window -v')}
             {renderButton('Split Horizontal (")', 'split-window -h')}
             {renderButton('Swap Pane (o)', 'select-pane -t:.+')}
-            {renderButton('Toggle Zoom (z)', 'zoom-pane')}
+            {renderButton('Toggle Zoom (z)', 'resize-pane -Z')}
 
             {/* Misc */}
             {renderButton('Scroll Mode ([)', 'copy-mode')}

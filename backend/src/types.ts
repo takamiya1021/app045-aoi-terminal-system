@@ -50,6 +50,7 @@ export interface OutputMessage extends BaseServerMessage {
 export interface ConnectedMessage extends BaseServerMessage {
   type: 'connected';
   sessionId: string;
+  tmuxSession: string;
 }
 
 export interface TmuxWindow {
