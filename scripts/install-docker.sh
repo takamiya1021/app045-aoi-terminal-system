@@ -4,8 +4,8 @@ set -euo pipefail
 # Aoi-Terminals "one command" installer for Docker.
 #
 # 使い方例（このスクリプトを raw.githubusercontent.com で配る想定）:
-#   curl -fsSL https://raw.githubusercontent.com/<OWNER>/<REPO>/main/scripts/install-docker.sh \
-#     | AOI_TERMINALS_IMAGE_REPO=ghcr.io/<OWNER>/<REPO> TERMINAL_TOKEN=your_token bash
+#   curl -fsSL https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/install-docker.sh \
+#     | AOI_TERMINALS_IMAGE_REPO=ghcr.io/takamiya1021/app045-aoi-terminal-system TERMINAL_TOKEN=your_token bash
 #
 # NOTE:
 # - ここでは GHCR 上のビルド済みイメージを pull して起動する（ビルド不要）。
