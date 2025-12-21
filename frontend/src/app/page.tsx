@@ -20,6 +20,7 @@ export default function Home() {
   const [initialTextInputValue, setInitialTextInputValue] = useState('');
   const incomingBufferRef = useRef<string[]>([]);
   const [incomingTick, setIncomingTick] = useState(0);
+  const lastInputRef = useRef<{ data: string; timestamp: number } | null>(null);
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authTokenInput, setAuthTokenInput] = useState('');
@@ -63,6 +64,8 @@ export default function Home() {
       if (!backendHttpBase) return;
       setIsAuthBusy(true);
       setAuthError(null);
+      console.log('[DEBUG] Backend URL:', backendHttpBase);
+      console.log('[DEBUG] Attempting to connect to:', `${backendHttpBase}/auth`);
       try {
         const res = await fetch(`${backendHttpBase}/auth`, {
           method: 'POST',
@@ -77,15 +80,32 @@ export default function Home() {
           return;
         }
 
+        // cookie が確実に反映されるか /session で確認
+        try {
+          const sessionRes = await fetch(`${backendHttpBase}/session`, { credentials: 'include' });
+          if (!sessionRes.ok) {
+            setIsAuthenticated(false);
+            setAuthError('認証は通ったけど、セッションが確立できへんかった。Cookie設定を確認してな。');
+            return;
+          }
+        } catch (err) {
+          setIsAuthenticated(false);
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          setAuthError(`セッション確認に失敗したで: ${errorMsg}`);
+          return;
+        }
+
         setIsAuthenticated(true);
 
         if (opts?.clearUrlToken && typeof window !== 'undefined') {
           // URLにトークンを残さない（/??token=... の互換だけ残す）
           window.history.replaceState(null, '', window.location.pathname);
         }
-      } catch {
+      } catch (err) {
         setIsAuthenticated(false);
-        setAuthError('認証サーバに繋がらへんかった（バックエンド起動してる？）');
+        console.error('[DEBUG] Login error:', err);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        setAuthError(`認証サーバに繋がらへんかった: ${errorMsg} (URL: ${backendHttpBase}/auth)`);
       } finally {
         setIsAuthBusy(false);
       }
@@ -138,6 +158,9 @@ export default function Home() {
           }
 
           // /auth を投げる（結果で cookie がセットされる）
+          console.log('[DEBUG] Auto-login: Backend URL:', backendHttpBase);
+          console.log('[DEBUG] Auto-login: Attempting to connect to:', `${backendHttpBase}/auth`);
+          console.log('[DEBUG] Auto-login: URL token:', urlToken);
           try {
             const res = await fetch(`${backendHttpBase}/auth`, {
               method: 'POST',
@@ -152,14 +175,14 @@ export default function Home() {
               return;
             }
 
-            // ここまで来たら cookie セットが成功している前提で、UX優先で先に通す。
-            // もし cookie が反映されてへんかったら、後段の /session 確認 or WS 側で弾かれて気付ける。
-            setIsAuthenticated(true);
-            setAuthError(null);
-            window.history.replaceState(null, '', window.location.pathname);
-          } catch {
+        // /auth 成功後はまず URL から token を消す（ワンタイムなので残さない）
+        window.history.replaceState(null, '', window.location.pathname);
+        setAuthError(null);
+          } catch (err) {
             setIsAuthenticated(false);
-            setAuthError('認証サーバに繋がらへんかった（バックエンド起動してる？）');
+            console.error('[DEBUG] Auto-login error:', err);
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            setAuthError(`認証サーバに繋がらへんかった: ${errorMsg} (URL: ${backendHttpBase}/auth)`);
             return;
           }
         }
@@ -174,7 +197,6 @@ export default function Home() {
 
         setIsAuthenticated(true);
         setAuthError(null);
-        window.history.replaceState(null, '', window.location.pathname);
         try {
           sessionStorage.removeItem(attemptKey);
         } catch {
@@ -198,9 +220,10 @@ export default function Home() {
         incomingBufferRef.current.push(message.data);
         setIncomingTick((t) => t + 1);
       }
-      if ((message as any).type === 'error') {
+      if (message.type === 'error') {
         // バックエンド側が認証エラー等でcloseする前に送ってくるやつ
-        setWsErrorMessage((message as any).message || 'WebSocket error');
+        setWsErrorMessage(message.message || 'WebSocket error');
+        void checkSession();
       }
       console.log('Received from WS:', message);
     },
@@ -219,6 +242,16 @@ export default function Home() {
   }, []);
 
   const handleTerminalData = useCallback((data: string) => {
+    // スマホのブラウザで二重にイベントが発火する問題を回避
+    // 同じデータが50ms以内に来た場合はスキップ
+    const now = Date.now();
+    const last = lastInputRef.current;
+    if (last && last.data === data && now - last.timestamp < 50) {
+      console.log('[DEBUG] Duplicate input detected, skipping:', data);
+      return;
+    }
+
+    lastInputRef.current = { data, timestamp: now };
     sendMessage({ type: 'input', data: data });
   }, [sendMessage]);
 
@@ -247,6 +280,10 @@ export default function Home() {
       const res = await fetch(`${backendHttpBase}/link-token`, {
         method: 'POST',
         credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ isShare: true }), // シェア用QR（6時間セッション）
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
@@ -294,8 +331,8 @@ export default function Home() {
       }
     >
       <div className="flex flex-col h-full bg-slate-900 min-h-0">
-        <div className="flex-grow w-full p-2 md:p-4 flex" data-testid="terminal-container">
-          <div className="w-full h-full min-h-0 rounded-lg overflow-hidden border border-slate-700 shadow-2xl relative">
+        <div className="flex-grow w-full p-2 md:p-4 flex overflow-hidden" data-testid="terminal-container">
+          <div className="w-full h-full rounded-lg border border-slate-700 shadow-2xl relative overflow-hidden">
             {isAuthenticated ? (
               <>
                 {wsErrorMessage ? (
@@ -322,42 +359,90 @@ export default function Home() {
               </>
             ) : (
               <>
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950 text-slate-200 p-6">
-                  <div className="text-sm text-slate-300">接続するにはトークンが必要やで。</div>
-                  <div className="w-full max-w-sm flex gap-2">
-                    <input
-                      data-testid="auth-token-input"
-                      className="flex-1 rounded-md bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-orange-500"
-                      placeholder="Access token"
-                      value={authTokenInput}
-                      onChange={(e) => setAuthTokenInput(e.target.value)}
-                      autoComplete="off"
-                      autoCapitalize="none"
-                      spellCheck={false}
-                      disabled={isAuthBusy}
-                    />
-                    <button
-                      data-testid="auth-submit"
-                      className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 disabled:text-slate-400 text-white text-sm font-bold rounded-md"
-                      onClick={() => void login(authTokenInput)}
-                      disabled={isAuthBusy || authTokenInput.trim() === ''}
-                    >
-                      Connect
-                    </button>
+                <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 animate-gradient bg-[length:200%_200%]">
+                  {/* グリッドパターン */}
+                  <div className="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.03)_1px,transparent_1px)] bg-[size:50px_50px]" />
+
+                  {/* グロー効果 */}
+                  <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-glow-pulse" />
+                  <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-glow-pulse" style={{ animationDelay: '1s' }} />
+
+                  {/* メインコンテンツ */}
+                  <div className="relative z-10 flex flex-col items-center justify-center min-h-full p-6">
+                    <div className="w-full max-w-md animate-float">
+                      {/* ロゴ・タイトルエリア */}
+                      <div className="text-center mb-8">
+                        <div className="flex justify-center mb-4">
+                          <img
+                            src="/terminal-logo.svg"
+                            alt="Terminal Logo"
+                            className="w-32 h-32 md:w-40 md:h-40 drop-shadow-[0_0_20px_rgba(6,182,212,0.5)]"
+                          />
+                        </div>
+                        <div className="h-1 w-24 mx-auto bg-gradient-to-r from-transparent via-cyan-500 to-transparent rounded-full shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
+                        <p className="mt-4 text-cyan-300/60 text-sm tracking-wide">
+                          接続するにはトークンが必要やで
+                        </p>
+                      </div>
+
+                      {/* 入力エリア */}
+                      <div className="backdrop-blur-md bg-slate-900/30 border border-cyan-500/20 rounded-2xl p-6 shadow-[0_0_50px_rgba(6,182,212,0.1)] hover:shadow-[0_0_80px_rgba(6,182,212,0.2)] transition-all duration-500">
+                        <div className="space-y-4">
+                          <input
+                            data-testid="auth-token-input"
+                            className="w-full bg-slate-950/80 border-2 border-cyan-500/30 rounded-lg px-4 py-3 text-cyan-100 placeholder-cyan-500/30 outline-none focus:border-cyan-400 focus:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all duration-300 font-mono tracking-wider"
+                            placeholder="ACCESS TOKEN"
+                            value={authTokenInput}
+                            onChange={(e) => setAuthTokenInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && authTokenInput.trim() !== '' && !isAuthBusy) {
+                                void login(authTokenInput);
+                              }
+                            }}
+                            autoComplete="off"
+                            autoCapitalize="none"
+                            spellCheck={false}
+                            disabled={isAuthBusy}
+                          />
+                          <button
+                            data-testid="auth-submit"
+                            className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:from-slate-700 disabled:to-slate-800 disabled:text-slate-500 text-white font-bold py-3 rounded-lg shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] disabled:shadow-none transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 tracking-wider"
+                            onClick={() => void login(authTokenInput)}
+                            disabled={isAuthBusy || authTokenInput.trim() === ''}
+                          >
+                            {isAuthBusy ? 'CONNECTING...' : 'CONNECT'}
+                          </button>
+                        </div>
+
+                        {authError ? (
+                          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-300 backdrop-blur-sm">
+                            {authError}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {/* デコレーション */}
+                      <div className="mt-6 flex justify-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-cyan-500/50 animate-pulse" />
+                        <div className="w-2 h-2 rounded-full bg-blue-500/50 animate-pulse" style={{ animationDelay: '0.2s' }} />
+                        <div className="w-2 h-2 rounded-full bg-purple-500/50 animate-pulse" style={{ animationDelay: '0.4s' }} />
+                      </div>
+                    </div>
                   </div>
-                  {authError ? <div className="text-xs text-red-300">{authError}</div> : null}
                 </div>
                 <div className="hidden" data-testid="xterm-terminal" />
               </>
             )}
           </div>
         </div>
-        <div className="flex flex-col border-t border-slate-700">
-          <TmuxPanel onSendCommand={handleTmuxCommand} />
-          <div data-testid="control-panel">
-            <ControlPanel onSendKey={handleControlPanelKey} onOpenTextInput={openTextInput} />
+        {isAuthenticated && (
+          <div className="flex flex-col border-t border-slate-700 bg-slate-800">
+            <TmuxPanel onSendCommand={handleTmuxCommand} />
+            <div data-testid="control-panel">
+              <ControlPanel onSendKey={handleControlPanelKey} onOpenTextInput={openTextInput} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
       <TextInputModal
         isOpen={showTextInputModal}
