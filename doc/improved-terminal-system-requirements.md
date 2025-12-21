@@ -35,7 +35,12 @@
   - 共有トークンには **期限**がある（デフォルト 5分、`TERMINAL_LINK_TOKEN_TTL_SECONDS` で変更）
   - 共有URLは `/?token=...` 形式で配布可能。ただしログイン成功後にURLから token を自動削除（ブラウザ履歴/スクショへの残留を最小化）
 - **セッション維持**
-  - Cookieセッションはデフォルト **24時間**有効
+  - Cookieセッションの有効期間は用途により差別化:
+    - **通常ログイン（初回QR・追加QR）**: **24時間**有効（自分用の長期アクセス）
+    - **シェア用QR**: **6時間**有効（赤の他人に渡す短期アクセス）
+  - `/link-token` APIでは `isShare` パラメータで区別:
+    - `{ isShare: false }` または省略時: 24時間セッション（デフォルト）
+    - `{ isShare: true }`: 6時間セッション（UIの「共有リンク発行」ボタン）
   - ただし現状はバックエンドのメモリ保持のため、バックエンド再起動で失効する
 - **HTTPSについて**
   - 本番で `NODE_ENV=production` の場合、Cookieに `Secure` が付与されるため **HTTPS での運用が前提**
@@ -126,6 +131,10 @@
 ### 4.1 環境
 - **サーバーサイド**: WSL2 Ubuntu
 - **ネットワーク**: Tailscale VPN経由
+  - **Tailscale構成**: Windows側にのみTailscaleをインストール（WSL2側には不要）
+  - WSL2の自動ポートフォワーディングにより、WindowsのTailscale IP経由でWSL2にアクセス可能
+  - `start.sh`がWindows側の`tailscale.exe`（`/mnt/c/Program Files/Tailscale/tailscale.exe`）を自動実行してIPアドレス取得
+  - DNS競合の問題を完全回避（WSL2側のDNS自動生成とTailscaleのMagic DNSの競合を防ぐ）
 - **ポート**:
   - フロントエンド: `3101`
   - バックエンド: `3102`
