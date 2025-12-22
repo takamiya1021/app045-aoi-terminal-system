@@ -206,11 +206,20 @@ backend/
 
 ### 3.3 実行時の補助スクリプト（QR自動出力）
 
+
+
 ```
+
 scripts/
+
 ├─ start.sh              - tmuxでフロント/バック起動 + QR自動出力
+
 ├─ stop.sh               - 停止
-└─ print-share-qr.sh      - /link-token を叩いて CLI にURL+QR表示
+
+├─ install-docker.sh     - Docker環境一発起動インストーラー
+
+└─ print-share-qr.sh     - /link-token を叩いて CLI にURL+QR表示
+
 ```
 
 ### 3.3 主要コンポーネント詳細
