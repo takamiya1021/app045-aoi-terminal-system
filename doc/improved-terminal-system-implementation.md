@@ -482,47 +482,23 @@ tmuxセッション・ウィンドウ一覧が表示され、切り替えが可�
 
 ---
 
-## Phase 9: PWA対応（予定工数: 4時間）
+## Phase 9: 全画面モード対応（予定工数: 2時間）
 
 ### マイルストーン
-PWAとしてインストール可能、オフライン時の適切なエラー表示
+ブラウザの全画面表示機能により、没入感のあるターミナル操作が可能
 
 ### タスクリスト
 
-#### 9.1 manifest.json作成（1時間）
+#### 9.1 全画面切り替え機能（1時間）
 
-- [x] **Red**: manifest.jsonテスト
-  - 存在確認、必須フィールド確認
+- [x] **Red**: 全画面切り替えAPIの動作テスト
+- [x] **Green**: `requestFullscreen` / `exitFullscreen` 実装
+- [x] **Refactor**: ボタンデザインの調整
 
-- [x] **Green**: manifest.json実装
-  - `frontend/public/manifest.json` 作成
-  - アイコン画像作成（192x192, 512x512）
+#### 9.2 UI統合（1時間）
 
-- [x] **Refactor**: メタデータ最適化
-  - description、theme_color調整
-
-#### 9.2 Service Worker実装（2時間）
-
-- [x] **Red**: Service Workerテスト
-  - PlaywrightでService Worker登録を確認
-
-- [x] **Green**: Service Worker実装
-  - next-pwa設定: `npm install next-pwa`
-  - `next.config.js`にPWA設定追加
-
-- [x] **Refactor**: キャッシュ戦略最適化
-  - NetworkFirst戦略確認
-
-#### 9.3 オフライン対応（1時間）
-
-- [x] **Red**: オフライン時テスト
-  - E2E: オフラインモードでアクセスした際の挙動確認
-
-- [x] **Green**: オフラインページ実装
-  - `frontend/pages/offline.tsx` 作成
-
-- [x] **Refactor**: UX改善
-  - オフライン→オンライン復帰時の自動再接続
+- [x] **Green**: ヘッダーに全画面切り替えボタンを追加
+- [x] **Refactor**: モバイルでの表示確認
 
 ---
 
@@ -643,8 +619,7 @@ Claude風のモダンなデザインが適用され、レスポンシブ対応�
 - [x] 特殊キー操作（Ctrl, Alt, Esc等）
 - [x] tmux操作（ウィンドウ作成・切り替え・分割）
 - [x] セッション管理UI（ウィンドウ一覧・切り替え）
-- [x] PWAインストール
-- [x] オフライン時の適切なエラー表示
+- [x] 全画面モードの動作
 
 ### 13.2 品質チェック
 

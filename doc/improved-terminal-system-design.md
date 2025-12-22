@@ -7,13 +7,12 @@
 | レイヤー | 技術 | 選定理由 |
 |---------|------|---------|
 | **Webサーバー** | Next.js（開発/配信） | 開発時は `next dev` をそのままWebサーバとして利用し、構成をシンプルに保つ |
-| **フロントエンド** | React 18 + Next.js 14 | エコシステム充実、Claude Code on the Webと同系統、PWA対応が容易 |
+| **フロントエンド** | React 18 + Next.js 14 | エコシステム充実、Claude Code on the Webと同系統 |
 | **ターミナル** | xterm.js 5.x | CJK/IME完全サポート、実績豊富、アドオンが充実 |
 | **UIライブラリ** | Tailwind CSS 3.x | Claude風のモダンデザインが容易、カスタマイズ性高い |
 | **バックエンド** | Node.js 20+ + Express 5.x | WebSocket統合が容易、ターミナルI/Oブリッジに最適 |
 | **WebSocket** | ws（Node.js） | 軽量で高速、Express統合が簡単 |
 | **PTY** | node-pty 1.x | PTY生成、シェル実行に最適（環境によってはfallback） |
-| **PWA** | next-pwa | Next.jsとの統合が容易、Service Worker自動生成 |
 | **パッケージ管理** | npm | Next.jsとの親和性、標準的 |
 
 ### 1.2 バージョン情報
@@ -28,8 +27,7 @@
   "tailwindcss": "3.4.x",
   "express": "5.x",
   "ws": "8.17.x",
-  "node-pty": "1.0.x",
-  "next-pwa": "5.6.x"
+  "node-pty": "1.0.x"
 }
 ```
 
@@ -421,10 +419,7 @@ improved-terminal-system/
 │  │  ├─ hooks/
 │  │  └─ lib/
 │  ├─ public/
-│  │  ├─ manifest.json       # PWA manifest
-│  │  ├─ icon-192.png        # PWAアイコン
-│  │  ├─ icon-512.png
-│  │  └─ sw.js               # Service Worker（自動生成）
+│  │  └─ terminal-logo.svg
 │  ├─ package.json
 │  ├─ next.config.js
 │  ├─ tailwind.config.js
@@ -525,39 +520,16 @@ improved-terminal-system/
 - **接続数制限**: 単一ユーザー想定（複数接続は同一セッション共有）
 - **PTYバッファ**: デフォルト設定使用
 
-## 9. PWA設計
+## 9. 全画面モード設計
 
-### 9.1 manifest.json
+### 9.1 実装方式
 
-```json
-{
-  "name": "Improved Terminal System",
-  "short_name": "ITerminal",
-  "description": "Modern web-based terminal for iPad/iPhone",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#1a1a2e",
-  "theme_color": "#e94560",
-  "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
-}
-```
-
-### 9.2 Service Worker戦略
-
-- **next-pwa使用**: Service Worker自動生成
-- **キャッシュ戦略**: NetworkFirst（常に最新版取得）
-- **オフライン対応**: オフライン時はエラーページ表示（接続不可メッセージ）
+- **Fullscreen API**: ブラウザ標準の `Element.requestFullscreen()` を使用。
+- **UI統合**: ヘッダーの右側にトグルボタン `[ ]` を配置。
+- **挙動**: 
+  - ユーザー操作（クリック/タップ）をトリガーに全画面化。
+  - アドレスバー、タブ、OSのステータスバー（モバイルブラウザによる）を非表示化し、ターミナル領域を最大化。
+  - Escキーまたは再度ボタン押下で解除。
 
 ## 10. UI/UXデザイン仕様
 

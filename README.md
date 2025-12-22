@@ -85,7 +85,7 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
 - 🧼 **シンプル起動**: ローカル開発 / Dockerのどちらでも起動可能
 - 🔐 **セキュア認証**: ランダムトークン自動生成、HTTPSでのCookie Secure対応
 - 🎨 **モダンUI**: Claude Code on the Web風のクリーンなデザイン
-- 🌐 **PWA対応**: オフライン対応、インストール可能、Service Worker強制更新機能
+- 📺 **全画面モード**: ボタン一発でブラウザの枠を消して没入感のある操作が可能
 
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 

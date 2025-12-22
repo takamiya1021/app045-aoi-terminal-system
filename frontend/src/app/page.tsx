@@ -403,16 +403,37 @@ export default function Home() {
     setShowTextInputModal(true);
   }, []);
 
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((e) => {
+        console.error('Failed to enter fullscreen:', e);
+      });
+    } else {
+      document.exitFullscreen().catch((e) => {
+        console.error('Failed to exit fullscreen:', e);
+      });
+    }
+  }, []);
+
   return (
     <Layout
       headerRight={
         isAuthenticated ? (
-          <button
-            onClick={() => setIsShareOpen(true)}
-            className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-md shadow"
-          >
-            Share (QR)
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={toggleFullscreen}
+              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-md shadow"
+              title="Toggle Fullscreen"
+            >
+              [ ]
+            </button>
+            <button
+              onClick={() => setIsShareOpen(true)}
+              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-md shadow"
+            >
+              Share (QR)
+            </button>
+          </div>
         ) : null
       }
     >
