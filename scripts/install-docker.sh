@@ -235,6 +235,10 @@ else
   fi
 fi
 
+# 共通のQR表示スクリプトをダウンロードして保存（start.sh と完全に同じものを使う）
+curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/print-share-qr.sh" > "$BASE_DIR/print-share-qr.sh"
+chmod +x "$BASE_DIR/print-share-qr.sh"
+
 echo "[aoi-terminals] Starting containers in: $BASE_DIR"
 (
   cd "$BASE_DIR"
@@ -244,7 +248,10 @@ echo "[aoi-terminals] Starting containers in: $BASE_DIR"
 
 echo "---"
 echo "[aoi-terminals] OK"
-echo "URL: http://localhost:3101"
+
+# 開発環境の start.sh と全く同じスクリプトを実行してQRを表示
+"$BASE_DIR/print-share-qr.sh"
+
 final_token="${TERMINAL_TOKEN:-}"
 if [[ -z "$final_token" ]]; then
   final_token="$(read_env_value "TERMINAL_TOKEN" "$BASE_DIR/.env" || true)"
@@ -264,13 +271,14 @@ fi
 if [[ "${AOI_TERMINALS_PRINT_SHARE:-1}" != "0" ]] && [[ -n "$final_token" ]]; then
   if command -v curl >/dev/null 2>&1; then
     BACKEND_HTTP="http://127.0.0.1:3102"
-    deadline=$((SECONDS + 20))
+    echo "Waiting for backend to be ready to generate QR code..."
+    deadline=$((SECONDS + 60))
     until curl -fsS "${BACKEND_HTTP}/health" >/dev/null 2>&1; do
       if (( SECONDS > deadline )); then
         echo "[aoi-terminals] share link: backend health timeout (skipped)"
         break
       fi
-      sleep 0.2
+      sleep 1
     done
 
     if curl -fsS "${BACKEND_HTTP}/health" >/dev/null 2>&1; then

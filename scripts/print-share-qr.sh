@@ -1,49 +1,52 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
 set -euo pipefail
 
-# 起動直後に “共有リンク(ワンタイムトークン)” を発行して、ターミナルにURLとQRを出す。
-# 前提:
-# - backend が 3102 で起動している
-# - TERMINAL_TOKEN が設定されている（start.sh が dev default を入れる）
-#
-# 重要:
-# - QRのURLはスマホ等から到達できる必要があるため、可能なら TERMINAL_PUBLIC_BASE_URL を設定する。
-#   例: http://192.168.1.10:3101  /  http://100.x.x.x:3101(Tailscale)
+# Aoi-Terminals: QRコード表示スクリプト
+# バックエンドから一時トークン（5分有効）を取得して、QRコードを表示します。
 
 BACKEND_HOST="${BACKEND_HOST:-127.0.0.1}"
 BACKEND_PORT="${BACKEND_PORT:-3102}"
 BACKEND_HTTP="http://${BACKEND_HOST}:${BACKEND_PORT}"
 FRONTEND_PORT="${FRONTEND_PORT:-3101}"
-
 ORIGIN_HEADER="${ORIGIN_HEADER:-http://localhost:${FRONTEND_PORT}}"
 
+# JSONから値を抜き出す軽量関数（node/jq がなくても動くように）
+extract_json_string() {
+  sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -n 1
+}
+
 if [[ -z "${TERMINAL_TOKEN:-}" ]]; then
-  echo "[share-qr] TERMINAL_TOKEN is not set. Cannot auto-generate share link."
+  # .env があればそこから読み込む（Docker環境用）
+  ENV_FILE="$(dirname "$0")/.env"
+  if [[ -f "$ENV_FILE" ]]; then
+    TERMINAL_TOKEN="$(grep -E "^TERMINAL_TOKEN=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- || true)"
+    TERMINAL_PUBLIC_BASE_URL="$(grep -E "^TERMINAL_PUBLIC_BASE_URL=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- || true)"
+    IMAGE_REPO="$(grep -E "^AOI_TERMINALS_IMAGE_REPO=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- || true)"
+    TAG="$(grep -E "^AOI_TERMINALS_TAG=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- || true)"
+  fi
+fi
+
+if [[ -z "${TERMINAL_TOKEN:-}" ]]; then
+  echo "[share-qr] TERMINAL_TOKEN が設定されていません。"
   exit 1
 fi
 
 BASE_URL="${TERMINAL_PUBLIC_BASE_URL:-}"
 if [[ -z "$BASE_URL" ]]; then
-  # Tailscale 前提: MagicDNS(hostname) -> Tailscale IPv4 -> WSL内IP -> localhost の順で決める
+  # 以前のロジックでベストエフォートに取得
   if command -v tailscale >/dev/null 2>&1; then
-    dns_name="$(
-      tailscale status --json 2>/dev/null \
-        | node -e "const fs=require('fs'); const j=JSON.parse(fs.readFileSync(0,'utf8')); const n=j?.Self?.DNSName||''; process.stdout.write(String(n).replace(/\\.$/,''));" \
-        2>/dev/null || true
-    )"
-    if [[ -n "$dns_name" ]]; then
-      BASE_URL="http://${dns_name}:${FRONTEND_PORT}"
-    else
-      ts_ip="$(tailscale ip -4 2>/dev/null | head -n 1 || true)"
-      if [[ -n "$ts_ip" ]]; then
-        BASE_URL="http://${ts_ip}:${FRONTEND_PORT}"
-      fi
+    ts_ip="$(tailscale ip -4 2>/dev/null | head -n 1 || true)"
+    if [[ -n "$ts_ip" ]]; then
+      BASE_URL="http://${ts_ip}:${FRONTEND_PORT}"
+    fi
+  elif command -v tailscale.exe >/dev/null 2>&1; then
+    ts_ip="$(tailscale.exe ip -4 2>/dev/null | tr -d '\r' | head -n 1 || true)"
+    if [[ -n "$ts_ip" ]]; then
+      BASE_URL="http://${ts_ip}:${FRONTEND_PORT}"
     fi
   fi
-
+  
   if [[ -z "$BASE_URL" ]]; then
-    # ベストエフォート: WSL内IPを拾う（スマホから見える保証はない）
     ip_guess="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
     if [[ -n "$ip_guess" ]]; then
       BASE_URL="http://${ip_guess}:${FRONTEND_PORT}"
@@ -53,55 +56,47 @@ if [[ -z "$BASE_URL" ]]; then
   fi
 fi
 
-echo "[share-qr] Waiting for backend health: ${BACKEND_HTTP}/health"
-deadline=$((SECONDS + 20))
+# バックエンドの準備ができるまで待つ（少し長めに）
+deadline=$((SECONDS + 60))
 until curl -fsS "${BACKEND_HTTP}/health" >/dev/null 2>&1; do
   if (( SECONDS > deadline )); then
-    echo "[share-qr] Backend health check timed out."
+    echo "[share-qr] サーバーの起動待ちがタイムアウトしました。"
     exit 1
   fi
-  sleep 0.2
+  sleep 1
 done
 
+# トークン取得
 cookie_jar="$(mktemp)"
 cleanup() { rm -f "$cookie_jar"; }
 trap cleanup EXIT
 
-echo "[share-qr] Authenticating to backend (cookie session)..."
-curl -fsS -c "$cookie_jar" \
-  -H "Origin: ${ORIGIN_HEADER}" \
-  -H 'Content-Type: application/json' \
-  -d "{\"token\":\"${TERMINAL_TOKEN}\"}" \
-  "${BACKEND_HTTP}/auth" >/dev/null
+if curl -fsS -c "$cookie_jar" -H "Origin: ${ORIGIN_HEADER}" -H 'Content-Type: application/json' -d "{\"token\":\"${TERMINAL_TOKEN}\"}" "${BACKEND_HTTP}/auth" >/dev/null 2>&1; then
+  json="$(curl -fsS -b "$cookie_jar" -H "Origin: ${ORIGIN_HEADER}" -X POST "${BACKEND_HTTP}/link-token" 2>/dev/null || true)"
+  one_time_token="$(printf "%s" "$json" | extract_json_string "token" || true)"
 
-echo "[share-qr] Requesting one-time link token..."
-json="$(
-  curl -fsS -b "$cookie_jar" \
-    -H "Origin: ${ORIGIN_HEADER}" \
-    -X POST "${BACKEND_HTTP}/link-token"
-)"
+  if [[ -n "$one_time_token" ]]; then
+    URL="${BASE_URL%/}/?token=${one_time_token}"
+    echo "---"
+    echo "📱 Aoi-Terminals Login URL (One-Time / 5min):"
+    echo "$URL"
+    echo "---"
 
-url="$(
-  BASE_URL="$BASE_URL" node -e "const j=JSON.parse(process.argv[1]); const base=process.env.BASE_URL; if(!j||!j.ok||!j.token){process.exit(2)}; process.stdout.write(base+'/?token='+encodeURIComponent(String(j.token)));" \
-    "$json"
-)"
-
-expires_at="$(
-  node -e "const j=JSON.parse(process.argv[1]); process.stdout.write(String(j.expiresAt||''));" \
-    "$json" 2>/dev/null || true
-)"
-
-echo "---"
-echo "[share-qr] Share URL (one-time):"
-echo "$url"
-if [[ -n "$expires_at" ]]; then
-  echo "[share-qr] ExpiresAt(ms): $expires_at"
-fi
-echo "---"
-
-if command -v qrencode >/dev/null 2>&1; then
-  qrencode -t ANSIUTF8 "$url"
+    if command -v qrencode >/dev/null 2>&1; then
+      qrencode -t ANSIUTF8 "$URL"
+    else
+      # qrencodeがない場合はDocker経由で表示
+      IMAGE="${IMAGE_REPO:-ghcr.io/takamiya1021/app045-aoi-terminal-system-frontend}:${TAG:-latest}"
+      if command -v docker >/dev/null 2>&1; then
+        docker run --rm --pull=never --network=none -e URL="${URL}" "${IMAGE}" \
+          node -e "require('qrcode').toString(process.env.URL,{type:'terminal'},(e,s)=>process.stdout.write(s))" 2>/dev/null || echo "qrencode をインストールしてください。"
+      else
+        echo "qrencode が見つかりません。"
+      fi
+    fi
+  else
+    echo "[share-qr] トークンの取得に失敗しました。"
+  fi
 else
-  echo "[share-qr] qrencode not found. Install to print QR in terminal:"
-  echo "  sudo apt-get update && sudo apt-get install -y qrencode"
+  echo "[share-qr] 認証に失敗しました。"
 fi
