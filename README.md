@@ -56,13 +56,18 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
 ### スクリーンショット
 
 <div align="center">
-  <img src="frontend/public/screenshot-main.png" alt="Aoi-Terminals メイン画面" width="800">
-  <p><em>Androidスマホからターミナルにアクセスしている様子</em></p>
-
-  <br/>
-
-  <img src="frontend/public/screenshot-terminal.png" alt="Aoi-Terminals ターミナル操作画面" width="800">
-  <p><em>ターミナル操作とtmuxコントロールの様子</em></p>
+  <table>
+    <tr>
+      <td width="50%">
+        <img src="frontend/public/screenshot-main.png" alt="Aoi-Terminals メイン画面" width="100%">
+        <p align="center"><em>Androidスマホからターミナルにアクセスしている様子</em></p>
+      </td>
+      <td width="50%">
+        <img src="frontend/public/screenshot-terminal.png" alt="Aoi-Terminals ターミナル操作画面" width="100%">
+        <p align="center"><em>ターミナル操作とtmuxコントロールの様子</em></p>
+      </td>
+    </tr>
+  </table>
 </div>
 
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
