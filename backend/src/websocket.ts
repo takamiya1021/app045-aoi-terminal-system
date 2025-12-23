@@ -87,12 +87,17 @@ export function createWebSocketServer(server: http.Server): WebSocketServer {
     });
 
     // Send connected message with session ID
-    ws.send(JSON.stringify({ type: 'connected', sessionId: ptySessionId, tmuxSession: tmuxSessionName } as ServerMessage));
+    ws.send(JSON.stringify({
+      type: 'connected',
+      sessionId: ptySessionId,
+      tmuxSession: tmuxSessionName,
+      isDetached: tmuxDetached
+    } as ServerMessage));
 
     ws.on('message', async (message: WebSocket.Data) => {
       try {
         const rawMessage = message.toString();
-        
+
         // Handle Ping (some clients might send explicit ping messages, though WS protocol handles it)
         if (rawMessage === 'ping') {
           ws.send('pong');
@@ -116,13 +121,20 @@ export function createWebSocketServer(server: http.Server): WebSocketServer {
             break;
           case 'tmux-command': {
             if (parsedMessage.command === 'detach') {
+              logger.info(`Session ${ptySessionId}: Setting tmuxDetached = true`);
               tmuxDetached = true;
+            } else if (parsedMessage.command === 'attach-session') {
+              logger.info(`Session ${ptySessionId}: Manual attach requested. Setting tmuxDetached = false`);
+              ptyManager.write(ptySessionId, `tmux attach -t ${tmuxSessionName}\r`);
+              tmuxDetached = false;
+              break;
             }
 
             // Detach後は、まずattachしてからキー操作で実行（1タップで戻れる）
             if (tmuxDetached && parsedMessage.command !== 'detach') {
               const key = tmuxKeyForCommand(parsedMessage.command);
               if (key) {
+                logger.info(`Session ${ptySessionId}: Auto-attaching for command [${parsedMessage.command}]`);
                 ptyManager.write(ptySessionId, `tmux attach -t ${tmuxSessionName}\r`);
                 setTimeout(() => {
                   ptyManager.write(ptySessionId, `\x02${key}`);
@@ -143,7 +155,11 @@ export function createWebSocketServer(server: http.Server): WebSocketServer {
           case 'session-info-request':
             try {
               const windows = await tmuxHelper.listWindows(ptySessionId);
-              ws.send(JSON.stringify({ type: 'session-info-response', windows } as ServerMessage));
+              ws.send(JSON.stringify({
+                type: 'session-info-response',
+                windows,
+                isDetached: tmuxDetached
+              } as ServerMessage));
             } catch (error) {
               const message = error instanceof Error ? error.message : String(error);
               ws.send(JSON.stringify({ type: 'output', data: `\r\n[tmux-error] ${message}\r\n` } as ServerMessage));

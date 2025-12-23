@@ -1,8 +1,8 @@
 // メッセージタイプ
-export type MessageType = 
-  | 'input' 
-  | 'resize' 
-  | 'tmux-command' 
+export type MessageType =
+  | 'input'
+  | 'resize'
+  | 'tmux-command'
   | 'session-info-request'
   | 'output'
   | 'connected'
@@ -51,6 +51,7 @@ export interface ConnectedMessage extends BaseServerMessage {
   type: 'connected';
   sessionId: string;
   tmuxSession: string;
+  isDetached?: boolean;
 }
 
 export interface TmuxWindow {
@@ -63,6 +64,7 @@ export interface TmuxWindow {
 export interface SessionInfoResponse extends BaseServerMessage {
   type: 'session-info-response';
   windows: TmuxWindow[];
+  isDetached?: boolean;
 }
 
 export interface ErrorMessage extends BaseServerMessage {

@@ -5,9 +5,11 @@ import dynamic from 'next/dynamic';
 import Layout from '../components/Layout';
 import ControlPanel from '../components/ControlPanel';
 import TmuxPanel from '../components/TmuxPanel';
+import SessionManager from '../components/SessionManager';
 import { useWebSocket } from '../hooks/useWebSocket';
 import TextInputModal from '../components/TextInputModal'; // For mobile IME or special inputs
 import ShareLinkModal from '../components/ShareLinkModal';
+import { TmuxWindow } from '@/lib/types';
 
 // Dynamically import TerminalComponent with ssr: false
 const TerminalComponent = dynamic(() => import('../components/Terminal'), {
@@ -29,6 +31,10 @@ export default function Home() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthBusy, setIsAuthBusy] = useState(false);
   const [wsErrorMessage, setWsErrorMessage] = useState<string | null>(null);
+
+  const [tmuxWindows, setTmuxWindows] = useState<TmuxWindow[]>([]);
+  const [isDetached, setIsDetached] = useState(false);
+  const activeWindowId = useMemo(() => tmuxWindows.find(w => w.active)?.id || null, [tmuxWindows]);
 
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -306,6 +312,15 @@ export default function Home() {
         incomingBufferRef.current.push(message.data);
         setIncomingTick((t) => t + 1);
       }
+      if (message.type === 'connected') {
+        setIsAuthenticated(true);
+        setIsDetached(!!message.isDetached);
+        console.log('Connected to PTY session:', message.sessionId);
+      }
+      if (message.type === 'session-info-response') {
+        setTmuxWindows(message.windows);
+        setIsDetached(!!message.isDetached);
+      }
       if (message.type === 'error') {
         // バックエンド側が認証エラー等でcloseする前に送ってくるやつ
         setWsErrorMessage(message.message || 'WebSocket error');
@@ -320,6 +335,19 @@ export default function Home() {
     onClose: () => console.log('WebSocket connection closed'),
     onError: (event) => console.error('WebSocket error:', event),
   });
+
+  // 定期的にセッション情報を取得
+  useEffect(() => {
+    if (!isAuthenticated || !wsUrl) return;
+
+    const fetchSessionInfo = () => {
+      sendMessage({ type: 'session-info-request' });
+    };
+
+    fetchSessionInfo(); // 初回
+    const interval = setInterval(fetchSessionInfo, 5000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, wsUrl, sendMessage]);
 
   const drainIncoming = useCallback(() => {
     const chunks = incomingBufferRef.current;
@@ -350,12 +378,35 @@ export default function Home() {
   }, [sendMessage]);
 
   const handleTmuxCommand = useCallback((command: string, args?: string[]) => {
+    // Optimistic UI update: Detach/Attach
+    if (command === 'detach') {
+      setIsDetached(true);
+    } else if (command === 'attach-session') {
+      setIsDetached(false);
+    }
+
     sendMessage({ type: 'tmux-command', command, args });
+    // 即座に反映させるために再取得をリクエスト（特にDetach/Attach用）
+    sendMessage({ type: 'session-info-request' });
   }, [sendMessage]);
 
   const handleTextInputModalSubmit = useCallback((value: string) => {
     sendMessage({ type: 'input', data: value });
     setShowTextInputModal(false);
+  }, [sendMessage]);
+
+  const handleSelectWindow = useCallback((windowId: string) => {
+    // tmux select-window -t %id
+    sendMessage({ type: 'tmux-command', command: 'select-window', args: ['-t', windowId] });
+    // 即座に反映させるために再取得をリクエスト
+    sendMessage({ type: 'session-info-request' });
+  }, [sendMessage]);
+
+  const handleRenameWindow = useCallback((windowId: string, newName: string) => {
+    // tmux rename-window -t %id "newname"
+    sendMessage({ type: 'tmux-command', command: 'rename-window', args: ['-t', windowId, newName] });
+    // 即座に反映させるために再取得をリクエスト
+    sendMessage({ type: 'session-info-request' });
   }, [sendMessage]);
 
   const generateShareLink = useCallback(async () => {
@@ -420,6 +471,16 @@ export default function Home() {
       headerRight={
         isAuthenticated ? (
           <div className="flex gap-2">
+            <button
+              onClick={() => window.open(window.location.origin, '_blank')}
+              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-md shadow flex items-center gap-1"
+              title="New Building (Open in New Tab)"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Building</span>
+            </button>
             <button
               onClick={toggleFullscreen}
               className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-md shadow"
@@ -544,7 +605,13 @@ export default function Home() {
         </div>
         {isAuthenticated && !isKeyboardOpen && (
           <div className="flex flex-col border-t border-slate-700 bg-slate-800">
-            <TmuxPanel onSendCommand={handleTmuxCommand} />
+            <TmuxPanel onSendCommand={handleTmuxCommand} isDetached={isDetached} />
+            <SessionManager
+              windows={tmuxWindows}
+              currentWindowId={activeWindowId}
+              onSelectWindow={handleSelectWindow}
+              onRenameWindow={handleRenameWindow}
+            />
             <div data-testid="control-panel">
               <ControlPanel onSendKey={handleControlPanelKey} onOpenTextInput={openTextInput} />
             </div>

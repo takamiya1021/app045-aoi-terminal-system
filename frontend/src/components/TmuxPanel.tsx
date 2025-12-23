@@ -4,19 +4,20 @@ import React, { useState } from 'react';
 
 interface TmuxPanelProps {
   onSendCommand: (command: string, args?: string[]) => void;
+  isDetached?: boolean;
 }
 
-const TmuxPanel: React.FC<TmuxPanelProps> = ({ onSendCommand }) => {
+const TmuxPanel: React.FC<TmuxPanelProps> = ({ onSendCommand, isDetached }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleCommandClick = (command: string, args?: string[]) => {
     onSendCommand(command, args);
   };
 
-  const renderButton = (label: string, command: string, args?: string[], uniqueKey?: string) => (
+  const renderButton = (label: string, command: string, args?: string[], uniqueKey?: string, isWarning?: boolean) => (
     <button
       key={uniqueKey || command}
-      className="px-3 py-2 bg-slate-700 text-slate-200 rounded-md hover:bg-slate-600 active:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-slate-900 text-sm font-mono flex-grow min-h-[44px] transition-colors"
+      className={`px-3 py-2 ${isWarning ? 'bg-red-700 hover:bg-red-600' : 'bg-slate-700 hover:bg-slate-600'} text-slate-200 rounded-md active:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-slate-900 text-sm font-mono flex-grow min-h-[44px] transition-colors`}
       onClick={() => handleCommandClick(command, args)}
     >
       {label}
@@ -47,7 +48,13 @@ const TmuxPanel: React.FC<TmuxPanelProps> = ({ onSendCommand }) => {
             {renderButton('New Window (c)', 'new-window')}
             {renderButton('Next Window (n)', 'next-window')}
             {renderButton('Previous Window (p)', 'previous-window')}
-            {renderButton('Detach (d)', 'detach')}
+
+            {/* Smart Attach/Detach Button */}
+            {isDetached ? (
+              renderButton('Attach Session', 'attach-session', undefined, 'attach', true)
+            ) : (
+              renderButton('Detach (d)', 'detach')
+            )}
 
             {/* Pane Management */}
             {renderButton('Split Vertical (%)', 'split-window -v')}

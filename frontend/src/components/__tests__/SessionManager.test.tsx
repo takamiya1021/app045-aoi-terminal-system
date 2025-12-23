@@ -23,15 +23,18 @@ describe('SessionManager Component', () => {
       />
     );
 
-    // Panel is initially closed, so buttons should not be in the document
-    expect(screen.queryByText('bash (1 panes)')).not.toBeInTheDocument();
+    // Panel is initially closed
+    expect(screen.queryByText('bash')).not.toBeInTheDocument();
 
     // Open the panel
-    fireEvent.click(screen.getByText('Open Session Manager'));
+    fireEvent.click(screen.getByText('TMUX WINDOWS'));
 
-    expect(screen.getByText('bash (1 panes)')).toBeInTheDocument();
-    expect(screen.getByText('editor (2 panes)')).toBeInTheDocument();
-    expect(screen.getByText('logs (1 panes)')).toBeInTheDocument();
+    expect(screen.getByText('bash')).toBeInTheDocument();
+    expect(screen.getByText('editor')).toBeInTheDocument();
+    expect(screen.getByText('logs')).toBeInTheDocument();
+    // Check for pane counts
+    expect(screen.getAllByText('(1)', { selector: 'span' })[0]).toBeInTheDocument();
+    expect(screen.getByText('(2)', { selector: 'span' })).toBeInTheDocument();
   });
 
   it('should highlight the active window', () => {
@@ -42,11 +45,10 @@ describe('SessionManager Component', () => {
         currentWindowId="0"
       />
     );
-    fireEvent.click(screen.getByText('Open Session Manager')); // Open the panel
+    fireEvent.click(screen.getByText('TMUX WINDOWS')); // Open the panel
 
-    // Assuming active window has a specific class or style
-    const activeWindowElement = screen.getByText('bash (1 panes)').closest('button');
-    expect(activeWindowElement).toHaveClass('bg-orange-600'); // Example class
+    const activeWindowElement = screen.getByText('bash').closest('button');
+    expect(activeWindowElement).toHaveClass('bg-orange-600');
   });
 
   it('should call onSelectWindow when a non-active window button is clicked', () => {
@@ -57,9 +59,9 @@ describe('SessionManager Component', () => {
         currentWindowId="0"
       />
     );
-    fireEvent.click(screen.getByText('Open Session Manager')); // Open the panel
+    fireEvent.click(screen.getByText('TMUX WINDOWS')); // Open the panel
 
-    fireEvent.click(screen.getByText('editor (2 panes)'));
+    fireEvent.click(screen.getByText('editor'));
     expect(mockOnSelectWindow).toHaveBeenCalledTimes(1);
     expect(mockOnSelectWindow).toHaveBeenCalledWith('1');
   });
@@ -72,13 +74,13 @@ describe('SessionManager Component', () => {
         currentWindowId="0"
       />
     );
-    fireEvent.click(screen.getByText('Open Session Manager')); // Open the panel
+    fireEvent.click(screen.getByText('TMUX WINDOWS')); // Open the panel
 
-    fireEvent.click(screen.getByText('bash (1 panes)'));
+    fireEvent.click(screen.getByText('bash'));
     expect(mockOnSelectWindow).not.toHaveBeenCalled();
   });
 
-  it('should close the panel when "Close Session Manager" is clicked', () => {
+  it('should close the panel when the toggle button is clicked again', () => {
     render(
       <SessionManager
         windows={mockWindows}
@@ -86,9 +88,9 @@ describe('SessionManager Component', () => {
         currentWindowId="0"
       />
     );
-    fireEvent.click(screen.getByText('Open Session Manager'));
-    expect(screen.getByText('bash (1 panes)')).toBeInTheDocument(); // Ensure it's open
-    fireEvent.click(screen.getByText('Close Session Manager'));
-    expect(screen.queryByText('bash (1 panes)')).not.toBeInTheDocument(); // Ensure it's closed
+    fireEvent.click(screen.getByText('TMUX WINDOWS'));
+    expect(screen.getByText('bash')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('TMUX WINDOWS'));
+    expect(screen.queryByText('bash')).not.toBeInTheDocument();
   });
 });

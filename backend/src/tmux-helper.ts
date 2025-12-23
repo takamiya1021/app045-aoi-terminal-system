@@ -22,6 +22,8 @@ export class TmuxHelper {
     }
 
     // Prepend 'tmux' to the command and add a carriage return
+    // Note: Since the PTY is already attached to a tmux session, we might not need 'tmux' prefix 
+    // for all commands if we are sending keys, but for direct commands we use 'tmux'.
     const fullCommand = `tmux ${command} ${args.join(' ')}\r`;
     logger.info(`TmuxHelper: Executing command in session ${sessionId}: ${fullCommand.trim()}`);
     session.write(fullCommand);
@@ -35,14 +37,15 @@ export class TmuxHelper {
       return [];
     }
 
+    // Determine the tmux session name
+    const tmuxSessionName = (process.env.TERMINAL_TMUX_SESSION || `its-${sessionId}`).replace(/[^a-zA-Z0-9_-]/g, '-');
+
     return new Promise((resolve, reject) => {
       let output = '';
-      const command = 'list-windows -F "#{window_id}:#{window_name}:#{pane_active}:#{window_panes}"';
-      
-      // Create a temporary PTY for command execution that expects a response
-      // This is a simplified approach, a more robust solution might use a dedicated control PTY
-      // to avoid interfering with the main session's output.
-      const tempPty = pty.spawn('tmux', ['-S', '/tmp/tmux-' + sessionId, 'list-windows', '-F', '#{window_id}:#{window_name}:#{pane_active}:#{window_panes}'], {
+
+      // Use 'tmux list-windows -t session_name' to get info for the specific session
+      // We don't use -S socket_path because PtyManager uses the default socket.
+      const tempPty = pty.spawn('tmux', ['list-windows', '-t', tmuxSessionName, '-F', '#{window_id}:#{window_name}:#{pane_active}:#{window_panes}'], {
         name: 'xterm-color',
         cols: 80,
         rows: 24,
@@ -53,7 +56,7 @@ export class TmuxHelper {
       const timeout = setTimeout(() => {
         tempPty.kill();
         reject(new Error('tmux list-windows command timed out.'));
-      }, 2000); // 2 seconds timeout for the command to respond
+      }, 2000);
 
       tempPty.onData((data) => {
         output += data.toString();
@@ -64,8 +67,14 @@ export class TmuxHelper {
         if (exitInfo.exitCode === 0) {
           resolve(this.parseTmuxWindows(output));
         } else {
-          logger.error(`Tmux list-windows command failed with code ${exitInfo.exitCode}. Output: ${output}`);
-          reject(new Error(`tmux list-windows failed.`));
+          // If the session doesn't exist yet, it's not an error, just return empty list
+          if (output.includes('can\'t find session') || output.includes('failed to connect to server')) {
+            logger.info(`Tmux session ${tmuxSessionName} not found yet.`);
+            resolve([]);
+          } else {
+            logger.error(`Tmux list-windows command failed with code ${exitInfo.exitCode}. Output: ${output}`);
+            reject(new Error(`tmux list-windows failed.`));
+          }
         }
       });
     });

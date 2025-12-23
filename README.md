@@ -150,95 +150,70 @@ Aoi-Terminalsをローカル環境で実行するための手順を説明しま�
 
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 
-### インストール
+## インストール
 
-#### 最短起動（推奨）
+目的に合わせて、3つのインストール方法から選んでな。
 
-GitHub Container Registry（GHCR）に公開されているビルド済みイメージを使用して、1コマンドで起動できます。
+| 方法 | 対象 | 特徴 |
+| :--- | :--- | :--- |
+| **1. 最短起動 (GHCR)** | **一般ユーザー** | 1コマンドで完了。ビルド不要で一番楽。 |
+| **2. Docker Compose** | **カスタマイズしたい人** | ソースを落として自分でビルド。設定変更も自由。 |
+| **3. マニュアル (開発)** | **開発者** | WSL/Linux上でNode.jsを直接動かす。開発用。 |
+
+---
+
+### パス1：最短起動（推奨）
+GitHub Container Registry（GHCR）にあるビルド済みイメージを使って、1コマンドで全自動セットアップするで。
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/install-docker.sh \
   | bash
 ```
 
-**自動で行われること**:
-- ✅ Docker イメージのダウンロード
-- ✅ ログイントークンの自動生成（または指定したトークンを使用）
-- ✅ 設定ファイルの作成（`~/.aoi-terminals/.env`）
-- ✅ コンテナの起動
-- ✅ ワンタイム共有QRコードの表示
+> [!TIP]
+> **自動で行われること**:
+> - Dockerイメージのダウンロード
+> - ログイントークンの自動生成（`~/.aoi-terminals/.env`）
+> - コンテナの起動 & 共有用QRコードの表示
 
-**カスタムトークンを使用する場合**:
-```bash
-curl -fsSL https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/install-docker.sh \
-  | TERMINAL_TOKEN=your_custom_token bash
-```
+---
 
-起動後、ブラウザで `http://localhost:3101` にアクセスしてください。
+### パス2：Docker Composeで起動
+リポジトリをクローンして、手元でビルド・実行する方法や。
 
-<p align="right">(<a href="#目次">トップへ戻る</a>)</p>
-
-#### Docker Composeで起動
-
-リポジトリをクローンして、ローカルでビルド・起動する場合：
-
-1. リポジトリをクローン
+1. **リポジトリをクローン**
    ```sh
    git clone https://github.com/takamiya1021/app045-aoi-terminal-system.git
    cd app045-aoi-terminal-system
    ```
 
-2. 環境変数ファイルを作成
+2. **環境設定**
    ```sh
    cp .env.docker.example .env
+   # 必要に応じて .env を編集
    ```
 
-3. 環境変数を編集（必要に応じて）
-   ```sh
-   nano .env  # または vi .env
-   ```
-
-4. Docker Composeで起動
+3. **ビルド & 起動**
    ```sh
    docker compose up -d --build
    ```
 
-5. ブラウザで `http://localhost:3101` にアクセス
+---
 
-**停止**:
-```sh
-docker compose down
-```
+### パス3：開発環境（マニュアル）で起動
+WSL/Linux環境で、Node.jsを直接叩いて開発・テストする場合や。
 
-**ログ確認**:
-```sh
-docker compose logs -f
-```
-
-<p align="right">(<a href="#目次">トップへ戻る</a>)</p>
-
-#### 開発環境で起動
-
-WSL/Linux環境で、Node.jsを直接使用して起動する場合：
-
-1. 依存関係をインストール
+1. **前提条件**: Node.js 20+, npm, tmuxをインストールしておいてな。
+2. **セットアップ**
    ```sh
    npm run setup
    ```
-
-2. 起動スクリプトを実行
+3. **起動**
    ```sh
-   npm start
-   # または
    ./scripts/start.sh
    ```
 
-3. ブラウザで `http://localhost:3101` にアクセス
-
-**停止**:
-```sh
-./scripts/stop.sh
-```
+**停止**: `./scripts/stop.sh` で止まるわ。
 
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 
@@ -285,6 +260,18 @@ TailscaleのIPでアクセスできるように、`.env` ファイル（`~/.aoi-
 
 4. **tmux操作**
    - tmuxパネルを展開して、ウィンドウ分割・切替などをボタンで操作
+
+### 認証とセッションの仕組み
+
+セキュアな運用のために、トークンの種類によって有効期限が異なります。
+
+| トークン体系 | 再利用 | セッション有効期間 | 用途 |
+| :--- | :--- | :--- | :--- |
+| **オーナー用** (`TERMINAL_TOKEN`) | **可能** | **24時間** | 自分用のメインアクセス。起動時のQRや環境変数で使用。 |
+| **シェア用** | **不可 (1回限り)** | **6時間** | 他端末や他人への一時的な共有用。一度使うと無効化。 |
+
+- **セッションの維持**: ブラウザを閉じても、クッキーが有効なら24時間以内（シェアは6時間）は再アクセス可能です。
+- **リンクの有効期限**: QRコードやURLに含まれるトークン自体の有効期限は**5分間**です（その間にアクセスしてクッキーを確立する必要があります）。
 
 ### 環境設定
 
