@@ -328,7 +328,9 @@ Distributed under the MIT License. See `LICENSE` for more information.
 * [Best-README-Template](https://github.com/othneildrew/Best-README-Template) - READMEテンプレート
 
 **特別な謝辞**:
-* チャッピー（Codex CLI） - 技術設計と実装のサポート
+* じぇみ（Gemini CLI） - 創発的アイデアと実装のリード
+* クロ（Claude CLI） - 堅実な実装と全体設計のサポート
+* チャッピー（Codex CLI） - 精密な技術分析とデバッグのサポート
 
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 
