@@ -86,14 +86,15 @@ if curl -fsS -c "$cookie_jar" -H "Origin: ${ORIGIN_HEADER}" -H 'Content-Type: ap
     echo "---"
 
     if command -v qrencode >/dev/null 2>&1; then
-      qrencode -t ANSIUTF8 "$URL"
+      # -t UTF8 でハーフブロック文字を使用し、-m 2 で余白を削ってコンパクトにする
+      qrencode -t UTF8 -m 2 "$URL"
     else
       # qrencodeがない場合はDocker経由で表示
       # 本番イメージ名に合わせて -frontend を付与
       IMAGE="${IMAGE_REPO:-ghcr.io/takamiya1021/app045-aoi-terminal-system}-frontend:${TAG:-latest}"
       if command -v docker >/dev/null 2>&1; then
         docker run --rm --pull=never --network=none -e URL="${URL}" "${IMAGE}" \
-          node -e "require('qrcode').toString(process.env.URL,{type:'terminal'},(e,s)=>process.stdout.write(s))" 2>/dev/null || echo "qrencode をインストールしてください (sudo apt install qrencode)。"
+          node -e "require('qrcode').toString(process.env.URL,{type:'terminal',small:true,margin:2},(e,s)=>process.stdout.write(s))" 2>/dev/null || echo "qrencode をインストールしてください (sudo apt install qrencode)。"
       else
         echo "qrencode が見つかりません。"
       fi
