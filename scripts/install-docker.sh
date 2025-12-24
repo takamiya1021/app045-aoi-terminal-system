@@ -199,37 +199,23 @@ BASE_DIR="$DEFAULT_INSTALL_DIR"
 mkdir -p "$BASE_DIR"
 mkdir -p "$BASE_DIR/.ssh"
 
-# SSH鍵の生成
-# SSH鍵の生成 (なければ作る)
+# SSH鍵の生成（常に上書き）
 SSH_KEY="$BASE_DIR/.ssh/id_rsa"
-if [[ ! -f "$SSH_KEY" ]]; then
-  echo "🔑 Generating SSH key..."
-  ssh-keygen -t rsa -b 4096 -f "$SSH_KEY" -N "" -C "aoi-terminals-bridge"
-  chmod 600 "$SSH_KEY"
-fi
+echo "🔑 Generating SSH key..."
+ssh-keygen -t rsa -b 4096 -f "$SSH_KEY" -N "" -C "aoi-terminals-bridge" -y <<< y >/dev/null 2>&1 || \
+ssh-keygen -t rsa -b 4096 -f "$SSH_KEY" -N "" -C "aoi-terminals-bridge"
+chmod 644 "$SSH_KEY"
 
-# 権限の自動修復 (常に実行)
-echo "[debug] Before chown:"
-ls -l "$SSH_KEY" || true
-
-# コンテナ内のnodeユーザー(1000)が読めるように所有者を変更
-if ! chown 1000:1000 "$SSH_KEY"; then
-  echo "⚠️ Failed to chown $SSH_KEY to 1000:1000. Trying chmod 644..."
-  chmod 644 "$SSH_KEY"
-fi
-
-echo "[debug] After chown/chmod:"
-ls -l "$SSH_KEY"
-
-# ホスト側の authorized_keys に登録
+# ホスト側の authorized_keys に登録（常に追加）
+echo "[aoi-terminals] 🔑 Registering bridge key..."
+mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
 PUB_KEY_CONTENT=$(cat "${SSH_KEY}.pub")
-if ! grep -qF "$PUB_KEY_CONTENT" "$HOME/.ssh/authorized_keys" 2>/dev/null; then
-  echo "[aoi-terminals] 🔑 Registering bridge key..."
-  mkdir -p "$HOME/.ssh"
-  chmod 700 "$HOME/.ssh"
-  echo "$PUB_KEY_CONTENT" >> "$HOME/.ssh/authorized_keys"
-  chmod 600 "$HOME/.ssh/authorized_keys"
-fi
+# 既存の aoi-terminals 鍵を削除してから追加
+grep -v "aoi-terminals-bridge" "$HOME/.ssh/authorized_keys" 2>/dev/null > "$HOME/.ssh/authorized_keys.tmp" || true
+echo "$PUB_KEY_CONTENT" >> "$HOME/.ssh/authorized_keys.tmp"
+mv "$HOME/.ssh/authorized_keys.tmp" "$HOME/.ssh/authorized_keys"
+chmod 600 "$HOME/.ssh/authorized_keys"
 
 # ホストのユーザー名取得
 CURRENT_USER=$(whoami)
