@@ -97,7 +97,9 @@ cmd_up() {
   echo "[aoi-terminals] 🚀 Launching production containers..."
   (
     cd "$BASE_DIR"
-    export $(grep -v '^#' .env | xargs)
+    set -a
+    source .env
+    set +a
     
     # ---------------------------------------------------------
     # DYNAMIC CONFIGURATION (Runtime)
