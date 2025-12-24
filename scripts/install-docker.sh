@@ -226,13 +226,10 @@ else
     fi
   fi
 
-  # 既存 .env にも “共有URLのベース” と “許可Origin” を足しとく（未指定時だけ）
-  if [[ -z "${TERMINAL_PUBLIC_BASE_URL:-}" ]]; then
-    ensure_env_value "TERMINAL_PUBLIC_BASE_URL" "$PUBLIC_BASE_URL" "$BASE_DIR/.env"
-  fi
-  if [[ -z "${ALLOWED_ORIGINS:-}" ]]; then
-    append_allowed_origin_if_missing "$PUBLIC_ORIGIN" "$BASE_DIR/.env"
-  fi
+  # 既存 .env でも PUBLIC_BASE_URL と ALLOWED_ORIGINS は常に最新のIPで更新
+  # （Tailscale IP や WSL IP は再起動で変わる可能性があるため）
+  ensure_env_value "TERMINAL_PUBLIC_BASE_URL" "$PUBLIC_BASE_URL" "$BASE_DIR/.env"
+  append_allowed_origin_if_missing "$PUBLIC_ORIGIN" "$BASE_DIR/.env"
 fi
 
 # 共通のQR表示スクリプトをダウンロードして保存（start.sh と完全に同じものを使う）
