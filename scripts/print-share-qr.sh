@@ -16,16 +16,10 @@ extract_json_string() {
 }
 
 if [[ -z "${TERMINAL_TOKEN:-}" ]]; then
-  # .env があればそこから読み込む（Docker環境用）
+  # .env があればそこから読み込む
   ENV_FILE="$(dirname "$0")/.env"
   if [[ -f "$ENV_FILE" ]]; then
-    TERMINAL_TOKEN="$(grep -E "^TERMINAL_TOKEN=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- | tr -d '\"' || true)"
-    TERMINAL_PUBLIC_BASE_URL="$(grep -E "^TERMINAL_PUBLIC_BASE_URL=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- | tr -d '\"' || true)"
-    IMAGE_REPO="$(grep -E "^AOI_TERMINALS_IMAGE_REPO=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- | tr -d '\"' || true)"
-    TAG="$(grep -E "^AOI_TERMINALS_TAG=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- | tr -d '\"' || true)"
-    # ポート設定もあれば読み込む
-    BACKEND_PORT="$(grep -E "^BACKEND_PORT=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- | tr -d '\"' || true)"
-    FRONTEND_PORT="$(grep -E "^FRONTEND_PORT=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- | tr -d '\"' || true)"
+    source "$ENV_FILE"
   fi
 fi
 
