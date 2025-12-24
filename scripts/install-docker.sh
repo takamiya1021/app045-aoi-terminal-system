@@ -165,15 +165,15 @@ mkdir -p "$BASE_DIR"
 mkdir -p "$BASE_DIR/.ssh"
 
 # SSH鍵の生成
+# SSH鍵の生成 (常に新規作成してリフレッシュする)
 SSH_KEY="$BASE_DIR/.ssh/id_rsa"
-if [[ ! -f "$SSH_KEY" ]]; then
-  echo "🔑 Generating SSH key..."
-  ssh-keygen -t rsa -b 4096 -f "$SSH_KEY" -N "" -C "aoi-terminals-bridge"
-  chmod 600 "$SSH_KEY"
-  # コンテナ内のnodeユーザー(1000)が読めるように所有者を変更
-  # (rootで実行された場合でもアクセス可能にするため)
-  chown 1000:1000 "$SSH_KEY" 2>/dev/null || true
-fi
+# 既存があっても上書きする（権限ミスなどの残留を防ぐため）
+echo "🔑 Generating SSH key..."
+ssh-keygen -t rsa -b 4096 -f "$SSH_KEY" -N "" -C "aoi-terminals-bridge"
+chmod 600 "$SSH_KEY"
+# コンテナ内のnodeユーザー(1000)が読めるように所有者を変更
+# (rootで実行された場合でもアクセス可能にするため)
+chown 1000:1000 "$SSH_KEY" 2>/dev/null || true
 
 # ホスト側の authorized_keys に登録
 PUB_KEY_CONTENT=$(cat "${SSH_KEY}.pub")
