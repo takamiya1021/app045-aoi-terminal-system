@@ -239,6 +239,32 @@ fi
 curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/print-share-qr.sh" > "$BASE_DIR/print-share-qr.sh"
 chmod +x "$BASE_DIR/print-share-qr.sh"
 
+# WSL2のポートフォワーディング設定（Tailscale経由アクセス用）
+# localhost/127.0.0.1 以外のIPが検出された場合のみ実行
+if [[ "$PUBLIC_BASE_URL" != http://localhost:* ]] && [[ "$PUBLIC_BASE_URL" != http://127.0.0.1:* ]]; then
+  WSL_IP=$(hostname -I | awk '{print $1}')
+  echo "[aoi-terminals] 🔧 Setting up Windows port forwarding..."
+  echo "   WSL2 IP: $WSL_IP"
+  echo "   Public URL: $PUBLIC_BASE_URL"
+
+  # PowerShellスクリプトをダウンロード
+  curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/setup-port-forwarding.ps1" > "$BASE_DIR/setup-port-forwarding.ps1"
+
+  # PowerShellスクリプトを管理者権限で実行（UACプロンプト表示）
+  SCRIPT_PATH_WIN=$(wslpath -w "$BASE_DIR/setup-port-forwarding.ps1")
+  powershell.exe -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \"$SCRIPT_PATH_WIN\" -WSL_IP $WSL_IP' -Wait" 2>/dev/null
+
+  if [[ $? -eq 0 ]]; then
+    echo "   ✅ Port forwarding configured!"
+  else
+    echo "   ⚠️  Port forwarding setup skipped (requires admin approval)"
+    echo "   💡 Tip: Run manually with admin PowerShell:"
+    echo "      netsh interface portproxy add v4tov4 listenport=3101 listenaddress=0.0.0.0 connectport=3101 connectaddress=$WSL_IP"
+    echo "      netsh interface portproxy add v4tov4 listenport=3102 listenaddress=0.0.0.0 connectport=3102 connectaddress=$WSL_IP"
+  fi
+  echo ""
+fi
+
 echo "[aoi-terminals] Starting containers in: $BASE_DIR"
 (
   cd "$BASE_DIR"
