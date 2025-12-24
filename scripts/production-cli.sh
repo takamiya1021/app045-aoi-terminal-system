@@ -49,14 +49,6 @@ usage() {
   echo ""
 }
 
-# Parse global flags
-DEV_MODE=false
-for arg in "$@"; do
-  case $arg in
-    --dev|--local) DEV_MODE=true; shift ;;
-  esac
-done
-
 cmd_up() {
   # 1. Port Forwarding (Tailscale/Local IP support)
   if [[ "$PUBLIC_BASE_URL" != http://localhost:* ]] && [[ "$PUBLIC_BASE_URL" != http://127.0.0.1:* ]]; then
@@ -94,27 +86,11 @@ cmd_up() {
   fi
 
   # 2. Start Containers
-  local compose_file="docker-compose.yml"
-  if [[ "$DEV_MODE" == true ]]; then
-    echo "[aoi-terminals] ✨ Verification Mode enabled (Mapping local code via volumes)"
-    # Create a temporary override file to map local code
-    cat > "$BASE_DIR/docker-compose-dev.yml" <<YAML
-services:
-  backend:
-    volumes:
-      - "${PROJECT_ROOT:-$BASE_DIR/../}/backend:/app"
-  frontend:
-    volumes:
-      - "${PROJECT_ROOT:-$BASE_DIR/../}/frontend:/app"
-YAML
-    compose_file="-f docker-compose.yml -f docker-compose-dev.yml"
-  fi
-
   echo "[aoi-terminals] 🚀 Launching production containers..."
   (
     cd "$BASE_DIR"
     export $(grep -v '^#' .env | xargs)
-    $COMPOSE_CMD $compose_file up -d
+    $COMPOSE_CMD up -d
   )
 
   echo "✅ System is online!"
@@ -148,21 +124,12 @@ cmd_info() {
 
 cmd_qr() {
   echo "🔗 Generating secure login QR code..."
-  local qr_script="$BASE_DIR/print-share-qr.sh"
-  # If in DEV_MODE, try to use the local script in the workspace if it exists
-  if [[ "$DEV_MODE" == true ]] && [[ -f "$BASE_DIR/../scripts/print-share-qr.sh" ]]; then
-    qr_script="$BASE_DIR/../scripts/print-share-qr.sh"
-  fi
-
-  if [[ -f "$qr_script" ]]; then
-    bash "$qr_script"
+  if [[ -f "$BASE_DIR/print-share-qr.sh" ]]; then
+    bash "$BASE_DIR/print-share-qr.sh"
   else
-    echo "❌ Error: QR script not found at $qr_script"
+    echo "❌ Error: print-share-qr.sh not found."
   fi
 }
-
-# Determine project root if possible
-PROJECT_ROOT="$(cd "$BASE_DIR/.." && pwd)"
 
 case "${1:-}" in
   up|start) cmd_up ;;
