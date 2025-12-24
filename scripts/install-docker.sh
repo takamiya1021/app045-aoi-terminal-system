@@ -298,7 +298,8 @@ if [[ "$PUBLIC_BASE_URL" != http://localhost:* ]] && [[ "$PUBLIC_BASE_URL" != ht
 
   # PowerShellスクリプトを管理者権限で実行（UACプロンプト表示）
   SCRIPT_PATH_WIN=$(wslpath -w "$BASE_DIR/setup-port-forwarding.ps1")
-  powershell.exe -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \"$SCRIPT_PATH_WIN\" -WSL_IP $WSL_IP' -Wait" 2>/dev/null
+  # プロセスを別ウィンドウ（-Waitあり）で実行し、お嬢がEnterを押せるようにする
+  powershell.exe -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \"$SCRIPT_PATH_WIN\" -WSL_IP $WSL_IP' -Wait"
 
   if [[ $? -eq 0 ]]; then
     echo "   ✅ Port forwarding configured!"
@@ -325,8 +326,12 @@ echo "[aoi-terminals] Starting containers in: $BASE_DIR"
 echo "---"
 echo "[aoi-terminals] OK"
 
-# 開発環境の start.sh と全く同じスクリプトを実行してQRを表示
-"$BASE_DIR/print-share-qr.sh"
+echo "---"
+echo "✅ System started in Docker!"
+echo "Base Directory: $BASE_DIR"
+echo "Backend Port: ${BACKEND_PORT_DEFAULT}"
+echo "Frontend Port: ${FRONTEND_PORT_DEFAULT}"
+echo "---"
 
 final_token="${TERMINAL_TOKEN:-}"
 if [[ -z "$final_token" ]]; then
@@ -334,85 +339,26 @@ if [[ -z "$final_token" ]]; then
 fi
 
 if [[ -n "$final_token" ]]; then
-  case "$token_source" in
-    provided) echo "Login token (provided): ${final_token}" ;;
-    generated) echo "Login token (generated): ${final_token}" ;;
-    *) echo "Login token: ${final_token}" ;;
-  esac
+  echo "🔑 Login token: ${final_token}"
+  # 開発環境と同じスタイルで強調表示
+  echo ""
+  echo "Scan QR or use this token to login."
 else
-  echo "Login token: see ${BASE_DIR}/.env (TERMINAL_TOKEN=...)"
+  echo "⚠️  Login token not found in ${BASE_DIR}/.env"
 fi
+echo "---"
 
-# 可能なら“ワンタイム共有リンク”もCLIに出す（ブラウザを開かなくてもスマホに渡せる）
-if [[ "${AOI_TERMINALS_PRINT_SHARE:-1}" != "0" ]] && [[ -n "$final_token" ]]; then
-  if command -v curl >/dev/null 2>&1; then
-    BACKEND_HTTP="http://127.0.0.1:3102"
-    echo "Waiting for backend to be ready to generate QR code..."
-    deadline=$((SECONDS + 60))
-    until curl -fsS "${BACKEND_HTTP}/health" >/dev/null 2>&1; do
-      if (( SECONDS > deadline )); then
-        echo "[aoi-terminals] share link: backend health timeout (skipped)"
-        break
-      fi
-      sleep 1
-    done
+# 開発環境の start.sh と全く同じスクリプトを実行してQRを表示
+# (ただし、バックエンドが立ち上がるまで少し待機するようにする)
+echo "🔗 Generating one-time share QR..."
+export TERMINAL_TOKEN="$final_token"
+export TERMINAL_PUBLIC_BASE_URL="$PUBLIC_BASE_URL"
+export ALLOWED_ORIGINS="$ALLOWED_ORIGINS"
 
-    if curl -fsS "${BACKEND_HTTP}/health" >/dev/null 2>&1; then
-      cookie_jar="$(mktemp)"
-      cleanup_share() { rm -f "$cookie_jar"; }
-      trap cleanup_share EXIT
-
-      if curl -fsS -c "$cookie_jar" -H 'Content-Type: application/json' -d "{\"token\":\"${final_token}\"}" "${BACKEND_HTTP}/auth" >/dev/null 2>&1; then
-        json="$(curl -fsS -b "$cookie_jar" -X POST "${BACKEND_HTTP}/link-token" 2>/dev/null || true)"
-        one_time_token="$(printf "%s" "$json" | extract_json_string "token" || true)"
-        expires_at="$(printf "%s" "$json" | sed -n 's/.*"expiresAt"[[:space:]]*:[[:space:]]*\\([0-9][0-9]*\\).*/\\1/p' | head -n 1 || true)"
-
-        if [[ -n "$one_time_token" ]]; then
-          base_url="${TERMINAL_PUBLIC_BASE_URL:-}"
-          if [[ -z "$base_url" ]]; then
-            base_url="$(read_env_value "TERMINAL_PUBLIC_BASE_URL" "$BASE_DIR/.env" || true)"
-          fi
-          if [[ -z "$base_url" ]]; then
-            base_url="$PUBLIC_BASE_URL"
-          fi
-          share_url="${base_url%/}/?token=${one_time_token}"
-          echo "---"
-          echo "Share URL (one-time):"
-          echo "${share_url}"
-          if [[ -n "${expires_at:-}" ]]; then
-            echo "ExpiresAt(ms): ${expires_at}"
-          fi
-          if command -v qrencode >/dev/null 2>&1; then
-            qrencode -t ANSIUTF8 "${share_url}"
-          else
-            # qrencode が無い環境が普通やから、ホストへの追加インストール前提にしない。
-            # ここでは “既にpull済みの frontend イメージ” を使って Node(qrcode) でQRをANSI出力する。
-            if command -v docker >/dev/null 2>&1; then
-              frontend_image="${IMAGE_REPO}-frontend:${TAG}"
-              if docker run --rm --pull=never --network=none -e SHARE_URL="${share_url}" "${frontend_image}" \
-                node -e "const QR=require('qrcode'); QR.toString(process.env.SHARE_URL,{type:'terminal'},(e,s)=>{if(e){process.exit(1)}; process.stdout.write(s)})" \
-                2>/dev/null; then
-                :
-              else
-                echo "(QR) qrencode not found (and docker QR fallback failed). Install to print QR in terminal:"
-                echo "  sudo apt-get update && sudo apt-get install -y qrencode"
-              fi
-            else
-              echo "(QR) qrencode not found. Install to print QR in terminal:"
-              echo "  sudo apt-get update && sudo apt-get install -y qrencode"
-            fi
-          fi
-        else
-          echo "[aoi-terminals] share link: could not get one-time token (skipped)"
-        fi
-      else
-        echo "[aoi-terminals] share link: auth failed (skipped)"
-      fi
-    fi
-  else
-    echo "[aoi-terminals] share link: curl not found (skipped)"
-  fi
-fi
+# 修正版: 外部スクリプトに任せる（start.shと同じ方法）
+# ただし、バックエンドが起動する時間を考慮して、スクリプト側でもリトライするようにする
+# (print-share-qr.sh がその役割を担う)
+"$BASE_DIR/print-share-qr.sh"
 
 echo "Stop: (cd \"$BASE_DIR\" && ${COMPOSE_LABEL} down)"
 echo "Logs: (cd \"$BASE_DIR\" && ${COMPOSE_LABEL} logs -f)"
