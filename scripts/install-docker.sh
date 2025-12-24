@@ -263,6 +263,7 @@ BASE_DIR=${BASE_DIR}
 HOST_IP=${HOST_IP}
 SSH_TARGET=${SSH_TARGET}
 ENV
+  echo "[aoi-terminals] 📝 Created new environment file: $BASE_DIR/.env"
 else
   if [[ -n "${TERMINAL_TOKEN:-}" ]]; then
     token_source="provided"
@@ -340,9 +341,7 @@ fi
 
 if [[ -n "$final_token" ]]; then
   echo "🔑 Login token: ${final_token}"
-  # 開発環境と同じスタイルで強調表示
-  echo ""
-  echo "Scan QR or use this token to login."
+  echo "   (Stored in: ${BASE_DIR}/.env)"
 else
   echo "⚠️  Login token not found in ${BASE_DIR}/.env"
 fi
