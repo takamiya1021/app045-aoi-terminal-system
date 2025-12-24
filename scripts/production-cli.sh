@@ -7,9 +7,17 @@ set -euo pipefail
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 ENV_FILE="$BASE_DIR/.env"
 
+# Fallback to the default installation directory if not found locally
+if [[ ! -f "$ENV_FILE" ]] && [[ -f "$HOME/.aoi-terminals/.env" ]]; then
+  ENV_FILE="$HOME/.aoi-terminals/.env"
+  # Update BASE_DIR to the installed one so volumes/configs match
+  BASE_DIR="$HOME/.aoi-terminals"
+fi
+
 if [[ ! -f "$ENV_FILE" ]]; then
-  echo "❌ Error: Environment file not found in $BASE_DIR"
-  echo "   Please run the installer first."
+  echo "❌ Error: Production environment not found."
+  echo "   (Checked: $BASE_DIR/.env and $HOME/.aoi-terminals/.env)"
+  echo "   Please run the installer first: bash scripts/install-docker.sh"
   exit 1
 fi
 
