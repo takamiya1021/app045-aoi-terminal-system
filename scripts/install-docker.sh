@@ -319,7 +319,7 @@ if [[ "$PUBLIC_BASE_URL" != http://localhost:* ]] && [[ "$PUBLIC_BASE_URL" != ht
     done
   fi
   
-  "$PS_EXE" -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \"$SCRIPT_PATH_WIN\" -WSL_IP $WSL_IP' -Wait"
+  "$PS_EXE" -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \"$SCRIPT_PATH_WIN\" -WSL_IP $WSL_IP' -Wait" < /dev/null
 
   if [[ $? -eq 0 ]]; then
     echo "   ✅ Port forwarding configured!"
