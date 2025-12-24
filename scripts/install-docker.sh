@@ -23,6 +23,26 @@ if [[ $EUID -eq 0 ]]; then
    exit 1
 fi
 
+# Dockerグループ所属チェック & 自動追加
+if ! groups "$USER" | grep -q "\bdocker\b"; then
+  echo "⚠️ User '$USER' is not in the 'docker' group."
+  echo "🔧 Adding user to 'docker' group (requires sudo)..."
+  if sudo usermod -aG docker "$USER"; then
+    echo "✅ Successfully added to docker group."
+    echo "⚠️ IMPORTANT: You MUST restart your WSL terminal for this change to take effect."
+    echo "   (Run 'wsl --terminate <DistroName>' from PowerShell, or close all terminal windows)"
+    echo "⚠️ 重要: 設定を反映するために、必ずターミナル(WSL)を再起動してください。"
+    echo ""
+    echo "再起動後、以下を実行してください:"
+    echo "  ~/.aoi-terminals/aoi-terminals start"
+    exit 0
+  else
+    echo "❌ Failed to add user to docker group. Please run manually:"
+    echo "   sudo usermod -aG docker $USER"
+    exit 1
+  fi
+fi
+
 DEFAULT_IMAGE_REPO="ghcr.io/takamiya1021/app045-aoi-terminal-system"
 DEFAULT_TAG="latest"
 DEFAULT_INSTALL_DIR="$HOME/.aoi-terminals"
@@ -61,20 +81,7 @@ detect_public_base_url() {
     printf "%s" "${TERMINAL_PUBLIC_BASE_URL%/}"
     return 0
   fi
-# Dockerグループ所属チェック & 自動追加
-if ! groups "$USER" | grep -q "\bdocker\b"; then
-  echo "⚠️ User '$USER' is not in the 'docker' group."
-  echo "🔧 Adding user to 'docker' group (requires sudo)..."
-  if sudo usermod -aG docker "$USER"; then
-    echo "✅ Successfully added to docker group."
-    echo "⚠️ IMPORTANT: You MUST restart your WSL terminal for this change to take effect."
-    echo "   (Run 'wsl --terminate <DistroName>' from PowerShell, or close all terminal windows)"
-    echo "⚠️ 重要: 設定を反映するために、必ずターミナル(WSL)を再起動してください。"
-  else
-    echo "❌ Failed to add user to docker group. Please run manually:"
-    echo "   sudo usermod -aG docker $USER"
-  fi
-fi
+
   # Tailscale優先: Windows側の tailscale.exe または Linux側の tailscale を探す
   local ts_exe=""
   if command -v tailscale.exe >/dev/null 2>&1; then
