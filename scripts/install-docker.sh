@@ -11,25 +11,19 @@ set -euo pipefail
 # - ここでは GHCR 上のビルド済みイメージを pull して起動する（ビルド不要）。
 # - 設定は ~/.aoi-terminals/.env に保存される。
 
-# 1. 基本設定の読み込み
+# 1. 基本設定
 # ---------------------------------------------------------
-CONFIG_NAME="install-config.sh"
+DEFAULT_IMAGE_REPO="ghcr.io/takamiya1021/app045-aoi-terminal-system"
+DEFAULT_TAG="latest"
+DEFAULT_INSTALL_DIR="$HOME/.aoi-terminals"
+FRONTEND_PORT_DEFAULT="3101"
+BACKEND_PORT_DEFAULT="3102"
+DEFAULT_LINK_TOKEN_TTL="300"
+DEFAULT_COOKIE_SECURE="0"
+DEFAULT_ALLOWED_ORIGINS="http://localhost:3101,http://127.0.0.1:3101"
+
 # curl | bash 実行時や環境による BASH_SOURCE の挙動を吸収する
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" >/dev/null 2>&1 && pwd || echo ".")"
-
-if [[ -f "$SCRIPT_DIR/$CONFIG_NAME" ]]; then
-  source "$SCRIPT_DIR/$CONFIG_NAME"
-else
-  # ネットワーク経由での実行時、またはファイルが無い場合のデフォルト
-  DEFAULT_IMAGE_REPO="ghcr.io/takamiya1021/app045-aoi-terminal-system"
-  DEFAULT_TAG="latest"
-  DEFAULT_INSTALL_DIR="$HOME/.aoi-terminals"
-  FRONTEND_PORT_DEFAULT="3101"
-  BACKEND_PORT_DEFAULT="3102"
-  DEFAULT_LINK_TOKEN_TTL="300"
-  DEFAULT_COOKIE_SECURE="0"
-  DEFAULT_ALLOWED_ORIGINS="http://localhost:3101,http://127.0.0.1:3101"
-fi
 
 generate_terminal_token() {
   # 依存を増やさずに、それなりに強いトークンを作る（base64url）
@@ -85,7 +79,7 @@ detect_public_base_url() {
     return 0
   fi
 
-  printf "http://localhost:%s" "$port"
+  printf "http://localhost:%s" "$ip_guess" "$port"
 }
 
 read_env_value() {
@@ -145,7 +139,7 @@ extract_json_string() {
 }
 
 if ! command -v docker >/dev/null 2>&1; then
-  echo "[aoi-terminals] docker が見つからへん。Dockerを入れてからもう一回やってな。"
+  echo "[aoi-terminals] docker が見つかりません。Dockerをインストールしてから再実行してください。"
   exit 1
 fi
 
@@ -155,13 +149,10 @@ if docker compose version >/dev/null 2>&1; then
   COMPOSE=(docker compose)
   COMPOSE_LABEL="docker compose"
 elif command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
-  # 一部環境（特にWSL/古めのLinux）では v1 系の docker-compose が入ってることがある
   COMPOSE=(docker-compose)
   COMPOSE_LABEL="docker-compose"
 else
-  echo "[aoi-terminals] docker compose が使えへん（v2 plugin も docker-compose も見つからん）。"
-  echo "  - Docker Desktop を使ってるなら: Settings → Resources → WSL Integration でこのUbuntuをON"
-  echo "  - Ubuntu側に入れるなら: sudo apt-get update && sudo apt-get install -y docker-compose-plugin"
+  echo "[aoi-terminals] docker compose が使用できません。"
   exit 1
 fi
 
@@ -172,17 +163,17 @@ BASE_DIR="$DEFAULT_INSTALL_DIR"
 mkdir -p "$BASE_DIR"
 mkdir -p "$BASE_DIR/.ssh"
 
-# SSH鍵の生成（コンテナからホストへの踏み台用）
+# SSH鍵の生成
 SSH_KEY="$BASE_DIR/.ssh/id_rsa"
 if [[ ! -f "$SSH_KEY" ]]; then
-  echo "[aoi-terminals] 🔑 Generating SSH key for host access..."
+  echo "[aoi-terminals] 🔑 Generating host access key..."
   ssh-keygen -t rsa -b 4096 -f "$SSH_KEY" -N "" -C "aoi-terminals-bridge"
 fi
 
-# ホスト側の authorized_keys に登録（重複チェック付き）
+# ホスト側の authorized_keys に登録
 PUB_KEY_CONTENT=$(cat "${SSH_KEY}.pub")
 if ! grep -qF "$PUB_KEY_CONTENT" "$HOME/.ssh/authorized_keys" 2>/dev/null; then
-  echo "[aoi-terminals] 🔑 Registering public key to host's authorized_keys..."
+  echo "[aoi-terminals] 🔑 Registering bridge key..."
   mkdir -p "$HOME/.ssh"
   chmod 700 "$HOME/.ssh"
   echo "$PUB_KEY_CONTENT" >> "$HOME/.ssh/authorized_keys"
@@ -191,14 +182,14 @@ fi
 
 # ホストのユーザー名取得
 CURRENT_USER=$(whoami)
-# コンテナから見たホストIP（WSL2自身のIP）
+# コンテナから見たホストIP
 HOST_IP=$(hostname -I | awk '{print $1}')
 SSH_TARGET="${CURRENT_USER}@host.docker.internal"
 
 PUBLIC_BASE_URL="$(detect_public_base_url)"
 PUBLIC_ORIGIN="${PUBLIC_BASE_URL%/}"
 
-# 以前の .env や環境変数から TERMINAL_TOKEN を特定/生成して確定させる
+# トークンの特定/生成
 if [[ -n "${TERMINAL_TOKEN:-}" ]]; then
   token_source="provided"
 elif [[ -f "$BASE_DIR/.env" ]]; then
@@ -225,7 +216,7 @@ services:
       TERMINAL_TOKEN: "${TERMINAL_TOKEN}"
       TERMINAL_LINK_TOKEN_TTL_SECONDS: "${DEFAULT_LINK_TOKEN_TTL}"
       TERMINAL_COOKIE_SECURE: "${DEFAULT_COOKIE_SECURE}"
-      NODE_ENV: "development"
+      NODE_ENV: "production"
       TERMINAL_SSH_TARGET: "${SSH_TARGET}"
       TERMINAL_SSH_KEY: "/app/ssh_key"
     restart: unless-stopped
@@ -252,7 +243,7 @@ TERMINAL_PUBLIC_BASE_URL=${PUBLIC_BASE_URL}
 ALLOWED_ORIGINS="${DEFAULT_ALLOWED_ORIGINS},${PUBLIC_ORIGIN}"
 TERMINAL_LINK_TOKEN_TTL_SECONDS=${DEFAULT_LINK_TOKEN_TTL}
 TERMINAL_COOKIE_SECURE=${DEFAULT_COOKIE_SECURE}
-BACKEND_NODE_ENV=development
+BACKEND_NODE_ENV=production
 BASE_DIR=${BASE_DIR}
 HOST_IP=${HOST_IP}
 SSH_TARGET=${SSH_TARGET}
@@ -280,27 +271,33 @@ else
   ensure_env_value "FRONTEND_PORT" "$FRONTEND_PORT_DEFAULT" "$BASE_DIR/.env"
 fi
 
-# 5. 共通のスクリプトをダウンロード（start.sh と print-share-qr.sh）
+# 5. プロダクト用ツールとスクリプトの配置
 # ---------------------------------------------------------
+echo "[aoi-terminals] 🚚 Downloading production scripts..."
+
+# QR表示スクリプト
 curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/print-share-qr.sh" > "$BASE_DIR/print-share-qr.sh"
 chmod +x "$BASE_DIR/print-share-qr.sh"
 
-curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/start-docker.sh" > "$BASE_DIR/start.sh"
-chmod +x "$BASE_DIR/start.sh"
+# プロダクト専用CLI (aoi-terminals)
+curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/production-cli.sh" > "$BASE_DIR/aoi-terminals"
+chmod +x "$BASE_DIR/aoi-terminals"
 
-# 6. 起動処理の実行
+# 6. セットアップ完了と起動
 # ---------------------------------------------------------
 echo "---"
-echo "[aoi-terminals] ✅ Installation complete!"
+echo "✅ Installation Success!"
+echo "---"
+echo "Environment: PRODUCTION"
 echo "Base Directory: $BASE_DIR"
 echo "---"
 
-# 開発環境の start.sh と同じ体験にするため、インストール直後に自動で起動する
-echo "🚀 Automatically starting for the first time..."
+# 初回起動の実行
+echo "🚀 Starting the system for the first time..."
 # パイプ実行時でも入力を奪われないように /dev/null をリダイレクト
-bash "$BASE_DIR/start.sh" < /dev/null
+bash "$BASE_DIR/aoi-terminals" start < /dev/null
 
 echo ""
-echo "💡 To restart the system later, run:"
-echo "   bash $BASE_DIR/start.sh"
+echo "💡 Usage:"
+echo "   $BASE_DIR/aoi-terminals [start|stop|logs|info|qr]"
 echo ""
