@@ -14,9 +14,10 @@ DEFAULT_TAG="latest"
 FRONTEND_PORT_DEFAULT="3101"
 BACKEND_PORT_DEFAULT="3102"
 
-# 3. セキュリティ・有効期限設定
+# 4. セキュリティ・有効期限設定
 DEFAULT_LINK_TOKEN_TTL="300" # 5分
 DEFAULT_COOKIE_SECURE="0"    # HTTP環境（WSL/Tailscale）を考慮してデフォルトはOFF
+DEFAULT_ALLOWED_ORIGINS="http://localhost:3101,http://127.0.0.1:3101"
 
-# 4. インストール先のディレクトリ
+# 5. インストール先のディレクトリ
 DEFAULT_INSTALL_DIR="$HOME/.aoi-terminals"
