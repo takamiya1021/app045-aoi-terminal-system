@@ -262,6 +262,8 @@ BACKEND_NODE_ENV=development
 BASE_DIR=${BASE_DIR}
 HOST_IP=${HOST_IP}
 SSH_TARGET=${SSH_TARGET}
+BACKEND_PORT=${BACKEND_PORT_DEFAULT}
+FRONTEND_PORT=${FRONTEND_PORT_DEFAULT}
 ENV
   echo "[aoi-terminals] 📝 Created new environment file: $BASE_DIR/.env"
 else
@@ -280,6 +282,8 @@ else
   ensure_env_value "BASE_DIR" "$BASE_DIR" "$BASE_DIR/.env"
   ensure_env_value "HOST_IP" "$HOST_IP" "$BASE_DIR/.env"
   ensure_env_value "SSH_TARGET" "$SSH_TARGET" "$BASE_DIR/.env"
+  ensure_env_value "BACKEND_PORT" "$BACKEND_PORT_DEFAULT" "$BASE_DIR/.env"
+  ensure_env_value "FRONTEND_PORT" "$FRONTEND_PORT_DEFAULT" "$BASE_DIR/.env"
 fi
 
 # 共通のQR表示スクリプトをダウンロードして保存（start.sh と完全に同じものを使う）

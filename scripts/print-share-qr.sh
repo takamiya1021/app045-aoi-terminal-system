@@ -23,7 +23,9 @@ if [[ -z "${TERMINAL_TOKEN:-}" ]]; then
     TERMINAL_PUBLIC_BASE_URL="$(grep -E "^TERMINAL_PUBLIC_BASE_URL=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- || true)"
     IMAGE_REPO="$(grep -E "^AOI_TERMINALS_IMAGE_REPO=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- || true)"
     TAG="$(grep -E "^AOI_TERMINALS_TAG=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- || true)"
-  fi
+    # ポート設定もあれば読み込む
+    BACKEND_PORT="$(grep -E "^BACKEND_PORT=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- || true)"
+    FRONTEND_PORT="$(grep -E "^FRONTEND_PORT=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- || true)"
 fi
 
 if [[ -z "${TERMINAL_TOKEN:-}" ]]; then
