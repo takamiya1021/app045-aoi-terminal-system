@@ -28,7 +28,7 @@ FRONTEND_PORT="$(read_env_value "FRONTEND_PORT" "$ENV_FILE")"
 COMPOSE_CMD=""
 if docker compose version >/dev/null 2>&1; then
   COMPOSE_CMD="docker compose"
-elif command -v docker-compose >/dev/null 2>&1 then
+elif command -v docker-compose >/dev/null 2>&1; then
   COMPOSE_CMD="docker-compose"
 else
   echo "❌ Error: Docker Compose not found."
