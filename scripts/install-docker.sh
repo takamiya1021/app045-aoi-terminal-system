@@ -201,8 +201,8 @@ mkdir -p "$BASE_DIR/.ssh"
 
 # SSH鍵の生成（常に上書き）
 SSH_KEY="$BASE_DIR/.ssh/id_rsa"
+rm -f "$SSH_KEY" "$SSH_KEY.pub"
 echo "🔑 Generating SSH key..."
-ssh-keygen -t rsa -b 4096 -f "$SSH_KEY" -N "" -C "aoi-terminals-bridge" -y <<< y >/dev/null 2>&1 || \
 ssh-keygen -t rsa -b 4096 -f "$SSH_KEY" -N "" -C "aoi-terminals-bridge"
 chmod 644 "$SSH_KEY"
 
