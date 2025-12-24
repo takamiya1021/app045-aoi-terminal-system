@@ -60,6 +60,12 @@ app.get('/session', (req, res) => {
 
 app.post('/auth', (req, res) => {
   const token = (req.body as any)?.token;
+  logger.info('Auth request received', {
+    requestToken: token,
+    expectedToken: process.env.TERMINAL_TOKEN,
+    match: token === process.env.TERMINAL_TOKEN,
+    requestBody: req.body
+  });
   const result = verifyLoginToken(token);
   if (!result.valid) {
     res.status(401).json({ ok: false, message: 'Invalid token' });
