@@ -290,94 +290,27 @@ else
   ensure_env_value "FRONTEND_PORT" "$FRONTEND_PORT_DEFAULT" "$BASE_DIR/.env"
 fi
 
-# 共通のQR表示スクリプトをダウンロードして保存（start.sh と完全に同じものを使う）
+# 5. 共通のスクリプトをダウンロード（start.sh と print-share-qr.sh）
+# ---------------------------------------------------------
 curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/print-share-qr.sh" > "$BASE_DIR/print-share-qr.sh"
 chmod +x "$BASE_DIR/print-share-qr.sh"
 
-# WSL2のポートフォワーディング設定（Tailscale経由アクセス用）
-# localhost/127.0.0.1 以外のIPが検出された場合のみ実行
-if [[ "$PUBLIC_BASE_URL" != http://localhost:* ]] && [[ "$PUBLIC_BASE_URL" != http://127.0.0.1:* ]]; then
-  WSL_IP=$(hostname -I | awk '{print $1}')
-  echo "[aoi-terminals] 🔧 Setting up Windows port forwarding..."
-  echo "   WSL2 IP: $WSL_IP"
-  echo "   Public URL: $PUBLIC_BASE_URL"
+curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/start-docker.sh" > "$BASE_DIR/start.sh"
+chmod +x "$BASE_DIR/start.sh"
 
-  # PowerShellスクリプトをダウンロード
-  curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/setup-port-forwarding.ps1" > "$BASE_DIR/setup-port-forwarding.ps1"
-
-  # PowerShellスクリプトを管理者権限で実行（UACプロンプト表示）
-  SCRIPT_PATH_WIN=$(wslpath -w "$BASE_DIR/setup-port-forwarding.ps1")
-  
-  # rootユーザー等でPATHが通っていないケースを考慮
-  PS_EXE="powershell.exe"
-  if ! command -v powershell.exe >/dev/null 2>&1; then
-    for path in "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe" "/mnt/c/Windows/Sysnative/WindowsPowerShell/v1.0/powershell.exe"; do
-      if [[ -x "$path" ]]; then
-        PS_EXE="$path"
-        break
-      fi
-    done
-  fi
-  
-  "$PS_EXE" -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \"$SCRIPT_PATH_WIN\" -WSL_IP $WSL_IP' -Wait" < /dev/null
-
-  if [[ $? -eq 0 ]]; then
-    echo "   ✅ Port forwarding configured!"
-  else
-    echo "   ⚠️  Port forwarding setup skipped (requires admin approval)"
-    echo "   💡 Tip: Run manually with admin PowerShell:"
-    echo "      netsh interface portproxy add v4tov4 listenport=3101 listenaddress=0.0.0.0 connectport=3101 connectaddress=$WSL_IP"
-    echo "      netsh interface portproxy add v4tov4 listenport=3102 listenaddress=0.0.0.0 connectport=3102 connectaddress=$WSL_IP"
-  fi
-  echo ""
-fi
-
-echo "[aoi-terminals] Starting containers in: $BASE_DIR"
-(
-  cd "$BASE_DIR"
-  # .env を確実にエクスポートして docker compose の警告 (WARN: variable is not set) を抑止
-  if [[ -f .env ]]; then
-    export $(grep -v '^#' .env | xargs)
-  fi
-  "${COMPOSE[@]}" pull
-  "${COMPOSE[@]}" up -d
-)
-
+# 6. 起動処理の実行
+# ---------------------------------------------------------
 echo "---"
-echo "[aoi-terminals] OK"
-
-echo "---"
-echo "✅ System started in Docker!"
+echo "[aoi-terminals] ✅ Installation complete!"
 echo "Base Directory: $BASE_DIR"
-echo "Backend Port: ${BACKEND_PORT_DEFAULT}"
-echo "Frontend Port: ${FRONTEND_PORT_DEFAULT}"
 echo "---"
 
-final_token="${TERMINAL_TOKEN:-}"
-if [[ -z "$final_token" ]]; then
-  final_token="$(read_env_value "TERMINAL_TOKEN" "$BASE_DIR/.env" || true)"
-fi
+# 開発環境の start.sh と同じ体験にするため、インストール直後に自動で起動する
+echo "🚀 Automatically starting for the first time..."
+# パイプ実行時でも入力を奪われないように /dev/null をリダイレクト
+bash "$BASE_DIR/start.sh" < /dev/null
 
-if [[ -n "$final_token" ]]; then
-  echo "🔑 Login token: ${final_token}"
-  echo "🔗 Login URL:   ${PUBLIC_BASE_URL%/?}/?token=${final_token}"
-  echo "   (Stored in: ${BASE_DIR}/.env)"
-else
-  echo "⚠️  Login token not found in ${BASE_DIR}/.env"
-fi
-echo "---"
-
-# 開発環境の start.sh と全く同じスクリプトを実行してQRを表示
-# (ただし、バックエンドが立ち上がるまで少し待機するようにする)
-echo "🔗 Generating one-time share QR..."
-export TERMINAL_TOKEN="$final_token"
-export TERMINAL_PUBLIC_BASE_URL="$PUBLIC_BASE_URL"
-export ALLOWED_ORIGINS="${DEFAULT_ALLOWED_ORIGINS},${PUBLIC_ORIGIN}"
-
-# 修正版: 外部スクリプトに任せる（start.shと同じ方法）
-# ただし、バックエンドが起動する時間を考慮して、スクリプト側でもリトライするようにする
-# (print-share-qr.sh がその役割を担う)
-"$BASE_DIR/print-share-qr.sh"
-
-echo "Stop: (cd \"$BASE_DIR\" && ${COMPOSE_LABEL} down)"
-echo "Logs: (cd \"$BASE_DIR\" && ${COMPOSE_LABEL} logs -f)"
+echo ""
+echo "💡 To restart the system later, run:"
+echo "   bash $BASE_DIR/start.sh"
+echo ""
