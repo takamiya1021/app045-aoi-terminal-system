@@ -123,9 +123,9 @@ Aoi-Terminalsをローカル環境で実行するための手順を説明しま�
 以下のソフトウェアがインストールされている必要があります：
 
 #### Docker使用（推奨）
-* Docker Desktop または Docker Engine + Compose
+* [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/) をインストール
   ```sh
-  # Dockerバージョン確認
+  # 確認コマンド（WSLターミナルで実行）
   docker --version
   docker compose version
   ```
@@ -163,6 +163,9 @@ Aoi-Terminalsをローカル環境で実行するための手順を説明しま�
 ### パス1：最短起動（推奨）
 GitHub Container Registry（GHCR）にあるビルド済みイメージを使って、1コマンドで全自動セットアップするで。
 
+**前提条件**:
+- Docker Desktop for Windowsが起動していること
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/install-docker.sh \
   | bash
@@ -173,6 +176,11 @@ curl -fsSL https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-sy
 > - Dockerイメージのダウンロード
 > - ログイントークンの自動生成（`~/.aoi-terminals/.env`）
 > - コンテナの起動 & 共有用QRコードの表示
+
+> [!NOTE]
+> **更新したい時**:
+> 後日、最新版に更新したい場合は、同じコマンドを再実行するだけでOK。
+> 最新イメージの自動ダウンロード＋コンテナ再作成が行われます。
 
 ---
 
