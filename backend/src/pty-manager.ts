@@ -120,14 +120,41 @@ export class PtyManager {
     const shell = process.env.SHELL || 'bash';
     const useTmux = !['0', 'false', 'no'].includes(String(process.env.TERMINAL_USE_TMUX || 'true').toLowerCase());
     const tmuxSessionName = (process.env.TERMINAL_TMUX_SESSION || `its-${sessionId}`).replace(/[^a-zA-Z0-9_-]/g, '-');
-    
+
     try {
-      // 常にシェルを起動しておき、tmuxはその中で起動する（Detach後に戻れるように）
-      const ptyProcess = pty.spawn(shell, [], {
+      let buildShell = shell;
+      let shellArgs: string[] = [];
+
+      // SSH踏み台モード: TERMINAL_SSH_TARGET（例: user@host.docker.internal）があればSSHを起動
+      const sshTarget = process.env.TERMINAL_SSH_TARGET;
+      if (sshTarget) {
+        logger.info(`SSH Gateway Mode enabled. Target: ${sshTarget}`);
+        buildShell = 'ssh';
+
+        // 基本的なSSHオプション（バッチモード、厳密なホストチェック無効化、仮想ターミナル強制割り当て）
+        shellArgs = [
+          '-o', 'BatchMode=yes',
+          '-o', 'StrictHostKeyChecking=no',
+          '-t', // Force pseudo-terminal usage
+          sshTarget
+        ];
+
+        // 秘密鍵の指定があれば追加
+        if (process.env.TERMINAL_SSH_KEY) {
+          shellArgs.unshift('-i', process.env.TERMINAL_SSH_KEY);
+        }
+
+        // tmuxを使用する場合は、SSH先のホスト側でtmuxを起動させる
+        if (useTmux) {
+          shellArgs.push(`tmux new-session -A -s ${tmuxSessionName}`);
+        }
+      }
+
+      const ptyProcess = pty.spawn(buildShell, shellArgs, {
         name: 'xterm-color',
         cols: 80,
         rows: 24,
-        cwd: process.env.HOME || process.cwd(), // Provide a default if HOME is undefined
+        cwd: process.env.HOME || process.cwd(),
         env: process.env as { [key: string]: string },
       });
 
@@ -142,10 +169,10 @@ export class PtyManager {
 
       this.ptyAvailable = true;
       this.sessions.set(sessionId, ptyProcess as unknown as TerminalSession);
-      logger.info(`Created PTY session ${sessionId} (PID: ${ptyProcess.pid})`);
+      logger.info(`Created PTY session ${sessionId} (PID: ${ptyProcess.pid}, Mode: ${sshTarget ? 'SSH' : 'Local'})`);
 
-      if (useTmux) {
-        // tmuxを起動してアタッチ（Detachしてもシェルが残る）
+      if (useTmux && !sshTarget) {
+        // ローカルモードの時だけ、こちら側からtmuxを送り込む（SSHモードは引数で指定済み）
         ptyProcess.write(`tmux new-session -A -s ${tmuxSessionName}\r`);
       }
 

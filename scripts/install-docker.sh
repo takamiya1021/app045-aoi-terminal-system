@@ -165,6 +165,30 @@ TAG="${AOI_TERMINALS_TAG:-latest}"
 
 BASE_DIR="${AOI_TERMINALS_DIR:-$HOME/.aoi-terminals}"
 mkdir -p "$BASE_DIR"
+mkdir -p "$BASE_DIR/.ssh"
+
+# SSH鍵の生成（コンテナからホストへの踏み台用）
+SSH_KEY="$BASE_DIR/.ssh/id_rsa"
+if [[ ! -f "$SSH_KEY" ]]; then
+  echo "[aoi-terminals] 🔑 Generating SSH key for host access..."
+  ssh-keygen -t rsa -b 4096 -f "$SSH_KEY" -N "" -C "aoi-terminals-bridge"
+fi
+
+# ホスト側の authorized_keys に登録（重複チェック付き）
+PUB_KEY_CONTENT=$(cat "${SSH_KEY}.pub")
+if ! grep -qF "$PUB_KEY_CONTENT" "$HOME/.ssh/authorized_keys" 2>/dev/null; then
+  echo "[aoi-terminals] 🔑 Registering public key to host's authorized_keys..."
+  mkdir -p "$HOME/.ssh"
+  chmod 700 "$HOME/.ssh"
+  echo "$PUB_KEY_CONTENT" >> "$HOME/.ssh/authorized_keys"
+  chmod 600 "$HOME/.ssh/authorized_keys"
+fi
+
+# ホストのユーザー名取得
+CURRENT_USER=$(whoami)
+# コンテナから見たホストIP（WSL2のゲートウェイ）
+HOST_IP=$(ip route | grep default | awk '{print $3}')
+SSH_TARGET="${CURRENT_USER}@host.docker.internal"
 
 PUBLIC_BASE_URL="$(detect_public_base_url)"
 PUBLIC_ORIGIN="${PUBLIC_BASE_URL%/}"
@@ -175,6 +199,10 @@ services:
     image: ${AOI_TERMINALS_IMAGE_REPO}-backend:${AOI_TERMINALS_TAG:-latest}
     ports:
       - "3102:3102"
+    extra_hosts:
+      - "host.docker.internal:${HOST_IP}"
+    volumes:
+      - "$BASE_DIR/.ssh/id_rsa:/app/ssh_key:ro"
     environment:
       PORT: "3102"
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3101,http://127.0.0.1:3101}
@@ -182,6 +210,8 @@ services:
       TERMINAL_LINK_TOKEN_TTL_SECONDS: ${TERMINAL_LINK_TOKEN_TTL_SECONDS:-300}
       TERMINAL_COOKIE_SECURE: ${TERMINAL_COOKIE_SECURE:-0}
       NODE_ENV: ${BACKEND_NODE_ENV:-development}
+      TERMINAL_SSH_TARGET: "${SSH_TARGET}"
+      TERMINAL_SSH_KEY: "/app/ssh_key"
     restart: unless-stopped
 
   frontend:
