@@ -117,7 +117,11 @@ read_env_value() {
   if [[ -z "$line" ]]; then
     return 1
   fi
-  printf "%s" "${line#${key}=}"
+  local val="${line#${key}=}"
+  # Remove surrounding quotes if present
+  val="${val%\"}"
+  val="${val#\"}"
+  printf "%s" "$val"
 }
 
 ensure_env_value() {
@@ -127,9 +131,9 @@ ensure_env_value() {
 
   if grep -qE "^${key}=" "$file"; then
     # 値中に / があり得るので区切りは | を使う
-    sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+    sed -i "s|^${key}=.*|${key}=\"${value}\"|" "$file"
   else
-    printf "\n%s=%s\n" "$key" "$value" >>"$file"
+    printf "\n%s=\"%s\"\n" "$key" "$value" >>"$file"
   fi
 }
 
