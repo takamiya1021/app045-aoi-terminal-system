@@ -98,7 +98,7 @@ cmd_up() {
   (
     cd "$BASE_DIR"
     set -a
-    source .env
+    source "$ENV_FILE"
     set +a
     
     # ---------------------------------------------------------
