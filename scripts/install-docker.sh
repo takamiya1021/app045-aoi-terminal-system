@@ -14,8 +14,8 @@ set -euo pipefail
 # 1. 基本設定の読み込み
 # ---------------------------------------------------------
 CONFIG_NAME="install-config.sh"
-# curl | bash 時に BASH_SOURCE が未定義になるのを防ぐ
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" && pwd 2>/dev/null || echo ".")"
+# curl | bash 実行時や環境による BASH_SOURCE の挙動を吸収する
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" >/dev/null 2>&1 && pwd || echo ".")"
 
 if [[ -f "$SCRIPT_DIR/$CONFIG_NAME" ]]; then
   source "$SCRIPT_DIR/$CONFIG_NAME"
@@ -306,19 +306,20 @@ if [[ "$PUBLIC_BASE_URL" != http://localhost:* ]] && [[ "$PUBLIC_BASE_URL" != ht
   curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/setup-port-forwarding.ps1" > "$BASE_DIR/setup-port-forwarding.ps1"
 
   # PowerShellスクリプトを管理者権限で実行（UACプロンプト表示）
-  # -Wait は残すが、PS1側の Read-Key を消したので自動で閉じるようになる
   SCRIPT_PATH_WIN=$(wslpath -w "$BASE_DIR/setup-port-forwarding.ps1")
   
-  PS_COMMAND="powershell.exe"
+  # rootユーザー等でPATHが通っていないケースを考慮
+  PS_EXE="powershell.exe"
   if ! command -v powershell.exe >/dev/null 2>&1; then
-    # root等でPATHが通っていない場合の最終手段
-    PS_ABS_PATH="/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
-    if [[ -x "$PS_ABS_PATH" ]]; then
-      PS_COMMAND="$PS_ABS_PATH"
-    fi
+    for path in "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe" "/mnt/c/Windows/Sysnative/WindowsPowerShell/v1.0/powershell.exe"; do
+      if [[ -x "$path" ]]; then
+        PS_EXE="$path"
+        break
+      fi
+    done
   fi
   
-  "$PS_COMMAND" -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \"$SCRIPT_PATH_WIN\" -WSL_IP $WSL_IP' -Wait"
+  "$PS_EXE" -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \"$SCRIPT_PATH_WIN\" -WSL_IP $WSL_IP' -Wait"
 
   if [[ $? -eq 0 ]]; then
     echo "   ✅ Port forwarding configured!"
