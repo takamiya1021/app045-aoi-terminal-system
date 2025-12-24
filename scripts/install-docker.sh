@@ -207,19 +207,30 @@ SSH_TARGET="${CURRENT_USER}@host.docker.internal"
 PUBLIC_BASE_URL="$(detect_public_base_url)"
 PUBLIC_ORIGIN="${PUBLIC_BASE_URL%/}"
 
-cat >"$BASE_DIR/docker-compose.yml" <<'YAML'
+# 以前の .env や環境変数から TERMINAL_TOKEN を特定/生成して確定させる
+if [[ -n "${TERMINAL_TOKEN:-}" ]]; then
+  token_source="provided"
+elif [[ -f "$BASE_DIR/.env" ]]; then
+  token_source="existing"
+  TERMINAL_TOKEN="$(read_env_value "TERMINAL_TOKEN" "$BASE_DIR/.env")"
+else
+  token_source="generated"
+  TERMINAL_TOKEN="$(generate_terminal_token)"
+fi
+
+cat >"$BASE_DIR/docker-compose.yml" <<YAML
 services:
   backend:
-    image: ${AOI_TERMINALS_IMAGE_REPO}-backend:${AOI_TERMINALS_TAG:-latest}
+    image: ${IMAGE_REPO}-backend:${TAG}
     ports:
-      - "${BACKEND_PORT_DEFAULT}:3102"
+      - "${BACKEND_PORT_DEFAULT%:*}:3102"
     extra_hosts:
       - "host.docker.internal:${HOST_IP}"
     volumes:
       - "${BASE_DIR}/.ssh/id_rsa:/app/ssh_key:ro"
     environment:
       PORT: "3102"
-      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS}"
+      ALLOWED_ORIGINS: "${DEFAULT_ALLOWED_ORIGINS},${PUBLIC_ORIGIN}"
       TERMINAL_TOKEN: "${TERMINAL_TOKEN}"
       TERMINAL_LINK_TOKEN_TTL_SECONDS: "${DEFAULT_LINK_TOKEN_TTL}"
       TERMINAL_COOKIE_SECURE: "${DEFAULT_COOKIE_SECURE}"
@@ -229,7 +240,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ${AOI_TERMINALS_IMAGE_REPO}-frontend:${AOI_TERMINALS_TAG:-latest}
+    image: ${IMAGE_REPO}-frontend:${TAG}
     depends_on:
       - backend
     ports:
@@ -239,16 +250,8 @@ services:
     restart: unless-stopped
 YAML
 
-# 既存 .env があれば基本は尊重。明示で TERMINAL_TOKEN を渡した時だけ上書きする。
-token_source="existing"
-if [[ ! -f "$BASE_DIR/.env" ]]; then
-  token_source="generated"
-  # 未指定ならランダム発行（テスト/緊急用のつもりでも、デフォルト固定は危ない）
-  if [[ -z "${TERMINAL_TOKEN:-}" ]]; then
-    TERMINAL_TOKEN="$(generate_terminal_token)"
-  else
-    token_source="provided"
-  fi
+# 既存 .env があれば基本は尊重。
+if [[ "$token_source" == "generated" ]]; then
 
   cat >"$BASE_DIR/.env" <<ENV
 AOI_TERMINALS_IMAGE_REPO=${IMAGE_REPO}
@@ -303,6 +306,7 @@ if [[ "$PUBLIC_BASE_URL" != http://localhost:* ]] && [[ "$PUBLIC_BASE_URL" != ht
 
   # PowerShellスクリプトを管理者権限で実行（UACプロンプト表示）
   # -Wait は残すが、PS1側の Read-Key を消したので自動で閉じるようになる
+  SCRIPT_PATH_WIN=$(wslpath -w "$BASE_DIR/setup-port-forwarding.ps1")
   powershell.exe -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \"$SCRIPT_PATH_WIN\" -WSL_IP $WSL_IP' -Wait"
 
   if [[ $? -eq 0 ]]; then
@@ -356,7 +360,7 @@ echo "---"
 echo "🔗 Generating one-time share QR..."
 export TERMINAL_TOKEN="$final_token"
 export TERMINAL_PUBLIC_BASE_URL="$PUBLIC_BASE_URL"
-export ALLOWED_ORIGINS="$ALLOWED_ORIGINS"
+export ALLOWED_ORIGINS="${DEFAULT_ALLOWED_ORIGINS},${PUBLIC_ORIGIN}"
 
 # 修正版: 外部スクリプトに任せる（start.shと同じ方法）
 # ただし、バックエンドが起動する時間を考慮して、スクリプト側でもリトライするようにする

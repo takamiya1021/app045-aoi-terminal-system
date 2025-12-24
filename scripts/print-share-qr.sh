@@ -26,6 +26,7 @@ if [[ -z "${TERMINAL_TOKEN:-}" ]]; then
     # ポート設定もあれば読み込む
     BACKEND_PORT="$(grep -E "^BACKEND_PORT=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- || true)"
     FRONTEND_PORT="$(grep -E "^FRONTEND_PORT=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- || true)"
+  fi
 fi
 
 if [[ -z "${TERMINAL_TOKEN:-}" ]]; then
