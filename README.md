@@ -171,12 +171,6 @@ curl -fsSL https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-sy
   | bash
 ```
 
-> [!TIP]
-> **自動で行われること**:
-> - Dockerイメージのダウンロード
-> - ログイントークンの自動生成（`~/.aoi-terminals/.env`）
-> - コンテナの起動 & 共有用QRコードの表示
-
 > [!NOTE]
 > **更新したい時**:
 > 後日、最新版に更新したい場合は、同じコマンドを再実行するだけでOK。
