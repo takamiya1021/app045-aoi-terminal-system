@@ -167,8 +167,12 @@ mkdir -p "$BASE_DIR/.ssh"
 # SSH鍵の生成
 SSH_KEY="$BASE_DIR/.ssh/id_rsa"
 if [[ ! -f "$SSH_KEY" ]]; then
-  echo "[aoi-terminals] 🔑 Generating host access key..."
+  echo "🔑 Generating SSH key..."
   ssh-keygen -t rsa -b 4096 -f "$SSH_KEY" -N "" -C "aoi-terminals-bridge"
+  chmod 600 "$SSH_KEY"
+  # コンテナ内のnodeユーザー(1000)が読めるように所有者を変更
+  # (rootで実行された場合でもアクセス可能にするため)
+  chown 1000:1000 "$SSH_KEY" 2>/dev/null || true
 fi
 
 # ホスト側の authorized_keys に登録
