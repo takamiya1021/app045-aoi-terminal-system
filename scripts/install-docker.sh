@@ -24,7 +24,8 @@ if [[ $EUID -eq 0 ]]; then
 fi
 
 # Dockerグループ所属チェック & 自動追加
-if ! groups "$USER" | grep -q "\bdocker\b"; then
+# id コマンドで「このディストリビューション内での」グループ所属を確認
+if ! id -nG "$USER" 2>/dev/null | grep -qw "docker"; then
   echo "⚠️ User '$USER' is not in the 'docker' group."
   echo "🔧 Adding user to 'docker' group (requires sudo)..."
   if sudo usermod -aG docker "$USER"; then
