@@ -186,8 +186,8 @@ fi
 
 # ホストのユーザー名取得
 CURRENT_USER=$(whoami)
-# コンテナから見たホストIP（WSL2のゲートウェイ）
-HOST_IP=$(ip route | grep default | awk '{print $3}')
+# コンテナから見たホストIP（WSL2自身のIP）
+HOST_IP=$(hostname -I | awk '{print $1}')
 SSH_TARGET="${CURRENT_USER}@host.docker.internal"
 
 PUBLIC_BASE_URL="$(detect_public_base_url)"
@@ -202,7 +202,7 @@ services:
     extra_hosts:
       - "host.docker.internal:${HOST_IP}"
     volumes:
-      - "$BASE_DIR/.ssh/id_rsa:/app/ssh_key:ro"
+      - "${BASE_DIR:-$HOME/.aoi-terminals}/.ssh/id_rsa:/app/ssh_key:ro"
     environment:
       PORT: "3102"
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3101,http://127.0.0.1:3101}
@@ -245,6 +245,9 @@ ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3101,http://127.0.0.1:3101,$
 TERMINAL_LINK_TOKEN_TTL_SECONDS=${TERMINAL_LINK_TOKEN_TTL_SECONDS:-300}
 TERMINAL_COOKIE_SECURE=${TERMINAL_COOKIE_SECURE:-0}
 BACKEND_NODE_ENV=${BACKEND_NODE_ENV:-development}
+BASE_DIR=${BASE_DIR}
+HOST_IP=${HOST_IP}
+SSH_TARGET=${SSH_TARGET}
 ENV
 else
   if [[ -n "${TERMINAL_TOKEN:-}" ]]; then
@@ -256,10 +259,12 @@ else
     fi
   fi
 
-  # 既存 .env でも PUBLIC_BASE_URL と ALLOWED_ORIGINS は常に最新のIPで更新
-  # （Tailscale IP や WSL IP は再起動で変わる可能性があるため）
+  # 既存 .env でも必要事項は常に最新の状態で更新・追記
   ensure_env_value "TERMINAL_PUBLIC_BASE_URL" "$PUBLIC_BASE_URL" "$BASE_DIR/.env"
   append_allowed_origin_if_missing "$PUBLIC_ORIGIN" "$BASE_DIR/.env"
+  ensure_env_value "BASE_DIR" "$BASE_DIR" "$BASE_DIR/.env"
+  ensure_env_value "HOST_IP" "$HOST_IP" "$BASE_DIR/.env"
+  ensure_env_value "SSH_TARGET" "$SSH_TARGET" "$BASE_DIR/.env"
 fi
 
 # 共通のQR表示スクリプトをダウンロードして保存（start.sh と完全に同じものを使う）
