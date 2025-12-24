@@ -300,6 +300,10 @@ fi
 echo "[aoi-terminals] Starting containers in: $BASE_DIR"
 (
   cd "$BASE_DIR"
+  # .env を確実にエクスポートして docker compose の警告 (WARN: variable is not set) を抑止
+  if [[ -f .env ]]; then
+    export $(grep -v '^#' .env | xargs)
+  fi
   "${COMPOSE[@]}" pull
   "${COMPOSE[@]}" up -d
 )
