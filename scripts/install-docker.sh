@@ -11,6 +11,25 @@ set -euo pipefail
 # - ここでは GHCR 上のビルド済みイメージを pull して起動する（ビルド不要）。
 # - 設定は ~/.aoi-terminals/.env に保存される。
 
+# 1. 基本設定の読み込み
+# ---------------------------------------------------------
+# 開発時はカレントディレクトリのファイルを、curl実行時はリポジトリから取得を試みる
+CONFIG_NAME="install-config.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null || echo ".")"
+
+if [[ -f "$SCRIPT_DIR/$CONFIG_NAME" ]]; then
+  source "$SCRIPT_DIR/$CONFIG_NAME"
+else
+  # ネットワーク経由での実行時、デフォルト値を直接取得して source する
+  # (TODO: 必要に応じて URL を動的に決定する仕組みを入れる)
+  DEFAULT_IMAGE_REPO="ghcr.io/takamiya1021/app045-aoi-terminal-system"
+  FRONTEND_PORT_DEFAULT="3101"
+  BACKEND_PORT_DEFAULT="3102"
+  DEFAULT_LINK_TOKEN_TTL="300"
+  DEFAULT_COOKIE_SECURE="0"
+  DEFAULT_INSTALL_DIR="$HOME/.aoi-terminals"
+fi
+
 generate_terminal_token() {
   # 依存を増やさずに、それなりに強いトークンを作る（base64url）
   if command -v openssl >/dev/null 2>&1; then
@@ -31,7 +50,7 @@ PY
 }
 
 detect_public_base_url() {
-  local port="${FRONTEND_PORT:-3101}"
+  local port="${FRONTEND_PORT:-$FRONTEND_PORT_DEFAULT}"
 
   if [[ -n "${TERMINAL_PUBLIC_BASE_URL:-}" ]]; then
     printf "%s" "${TERMINAL_PUBLIC_BASE_URL%/}"
@@ -155,7 +174,6 @@ else
   exit 1
 fi
 
-DEFAULT_IMAGE_REPO="ghcr.io/takamiya1021/app045-aoi-terminal-system"
 IMAGE_REPO="${AOI_TERMINALS_IMAGE_REPO:-$DEFAULT_IMAGE_REPO}"
 if [[ -z "${AOI_TERMINALS_IMAGE_REPO:-}" ]]; then
   echo "[aoi-terminals] AOI_TERMINALS_IMAGE_REPO 未指定やからデフォルト使うで: ${DEFAULT_IMAGE_REPO}"
@@ -163,7 +181,7 @@ fi
 
 TAG="${AOI_TERMINALS_TAG:-latest}"
 
-BASE_DIR="${AOI_TERMINALS_DIR:-$HOME/.aoi-terminals}"
+BASE_DIR="${AOI_TERMINALS_DIR:-$DEFAULT_INSTALL_DIR}"
 mkdir -p "$BASE_DIR"
 mkdir -p "$BASE_DIR/.ssh"
 
@@ -198,7 +216,7 @@ services:
   backend:
     image: ${AOI_TERMINALS_IMAGE_REPO}-backend:${AOI_TERMINALS_TAG:-latest}
     ports:
-      - "3102:3102"
+      - "${BACKEND_PORT_DEFAULT}:3102"
     extra_hosts:
       - "host.docker.internal:${HOST_IP}"
     volumes:
@@ -207,8 +225,8 @@ services:
       PORT: "3102"
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3101,http://127.0.0.1:3101}
       TERMINAL_TOKEN: ${TERMINAL_TOKEN:-valid_token}
-      TERMINAL_LINK_TOKEN_TTL_SECONDS: ${TERMINAL_LINK_TOKEN_TTL_SECONDS:-300}
-      TERMINAL_COOKIE_SECURE: ${TERMINAL_COOKIE_SECURE:-0}
+      TERMINAL_LINK_TOKEN_TTL_SECONDS: ${TERMINAL_LINK_TOKEN_TTL_SECONDS:-$DEFAULT_LINK_TOKEN_TTL}
+      TERMINAL_COOKIE_SECURE: ${TERMINAL_COOKIE_SECURE:-$DEFAULT_COOKIE_SECURE}
       NODE_ENV: ${BACKEND_NODE_ENV:-development}
       TERMINAL_SSH_TARGET: "${SSH_TARGET}"
       TERMINAL_SSH_KEY: "/app/ssh_key"
@@ -219,7 +237,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "3101:3101"
+      - "${FRONTEND_PORT_DEFAULT}:3101"
     environment:
       NODE_ENV: production
     restart: unless-stopped
