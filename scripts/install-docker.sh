@@ -13,21 +13,20 @@ set -euo pipefail
 
 # 1. 基本設定の読み込み
 # ---------------------------------------------------------
-# 開発時はカレントディレクトリのファイルを、curl実行時はリポジトリから取得を試みる
 CONFIG_NAME="install-config.sh"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null || echo ".")"
 
 if [[ -f "$SCRIPT_DIR/$CONFIG_NAME" ]]; then
   source "$SCRIPT_DIR/$CONFIG_NAME"
 else
-  # ネットワーク経由での実行時、デフォルト値を直接取得して source する
-  # (TODO: 必要に応じて URL を動的に決定する仕組みを入れる)
+  # ネットワーク経由での実行時、またはファイルが無い場合のデフォルト
   DEFAULT_IMAGE_REPO="ghcr.io/takamiya1021/app045-aoi-terminal-system"
+  DEFAULT_TAG="latest"
+  DEFAULT_INSTALL_DIR="$HOME/.aoi-terminals"
   FRONTEND_PORT_DEFAULT="3101"
   BACKEND_PORT_DEFAULT="3102"
   DEFAULT_LINK_TOKEN_TTL="300"
   DEFAULT_COOKIE_SECURE="0"
-  DEFAULT_INSTALL_DIR="$HOME/.aoi-terminals"
 fi
 
 generate_terminal_token() {
@@ -175,11 +174,7 @@ else
 fi
 
 IMAGE_REPO="${AOI_TERMINALS_IMAGE_REPO:-$DEFAULT_IMAGE_REPO}"
-if [[ -z "${AOI_TERMINALS_IMAGE_REPO:-}" ]]; then
-  echo "[aoi-terminals] AOI_TERMINALS_IMAGE_REPO 未指定やからデフォルト使うで: ${DEFAULT_IMAGE_REPO}"
-fi
-
-TAG="${AOI_TERMINALS_TAG:-latest}"
+TAG="${AOI_TERMINALS_TAG:-$DEFAULT_TAG}"
 
 BASE_DIR="${AOI_TERMINALS_DIR:-$DEFAULT_INSTALL_DIR}"
 mkdir -p "$BASE_DIR"

@@ -7,7 +7,10 @@
 # デフォルト: takamiya1021 の公式リポジトリ
 DEFAULT_IMAGE_REPO="ghcr.io/takamiya1021/app045-aoi-terminal-system"
 
-# 2. デフォルトのポート番号
+# 2. イメージのタグ（バージョン）
+DEFAULT_TAG="latest"
+
+# 3. デフォルトのポート番号
 FRONTEND_PORT_DEFAULT="3101"
 BACKEND_PORT_DEFAULT="3102"
 
