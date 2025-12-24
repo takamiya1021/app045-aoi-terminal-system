@@ -39,13 +39,30 @@ export class TmuxHelper {
 
     // Determine the tmux session name
     const tmuxSessionName = (process.env.TERMINAL_TMUX_SESSION || `its-${sessionId}`).replace(/[^a-zA-Z0-9_-]/g, '-');
+    const sshTarget = process.env.TERMINAL_SSH_TARGET;
 
     return new Promise((resolve, reject) => {
       let output = '';
 
-      // Use 'tmux list-windows -t session_name' to get info for the specific session
-      // We don't use -S socket_path because PtyManager uses the default socket.
-      const tempPty = pty.spawn('tmux', ['list-windows', '-t', tmuxSessionName, '-F', '#{window_id}:#{window_name}:#{pane_active}:#{window_panes}'], {
+      let cmd = 'tmux';
+      let args = ['list-windows', '-t', tmuxSessionName, '-F', '#{window_id}:#{window_name}:#{pane_active}:#{window_panes}'];
+
+      // SSHモードの場合、SSH経由でリモートのtmuxを実行する
+      if (sshTarget) {
+        const sshArgs = [
+          '-o', 'BatchMode=yes',
+          '-o', 'StrictHostKeyChecking=no',
+          sshTarget,
+          `tmux list-windows -t ${tmuxSessionName} -F '#{window_id}:#{window_name}:#{pane_active}:#{window_panes}'`
+        ];
+        if (process.env.TERMINAL_SSH_KEY) {
+          sshArgs.unshift('-i', process.env.TERMINAL_SSH_KEY);
+        }
+        cmd = 'ssh';
+        args = sshArgs;
+      }
+
+      const tempPty = pty.spawn(cmd, args, {
         name: 'xterm-color',
         cols: 80,
         rows: 24,
@@ -56,7 +73,7 @@ export class TmuxHelper {
       const timeout = setTimeout(() => {
         tempPty.kill();
         reject(new Error('tmux list-windows command timed out.'));
-      }, 2000);
+      }, 5000); // 接続待ちを考慮して少し長めに設定
 
       tempPty.onData((data) => {
         output += data.toString();
@@ -67,9 +84,16 @@ export class TmuxHelper {
         if (exitInfo.exitCode === 0) {
           resolve(this.parseTmuxWindows(output));
         } else {
-          // If the session doesn't exist yet, it's not an error, just return empty list
-          if (output.includes('can\'t find session') || output.includes('failed to connect to server')) {
-            logger.info(`Tmux session ${tmuxSessionName} not found yet.`);
+          // セッション未確立や接続拒否、ホスト未到達などは正常な「未準備」状態として扱う
+          const isExpectedError =
+            output.includes('can\'t find session') ||
+            output.includes('failed to connect to server') ||
+            output.includes('Connection refused') ||
+            output.includes('Permission denied') ||
+            output.includes('no such file or directory');
+
+          if (isExpectedError) {
+            logger.debug(`Tmux session ${tmuxSessionName} not ready or target unreachable. Output: ${output.trim()}`);
             resolve([]);
           } else {
             logger.error(`Tmux list-windows command failed with code ${exitInfo.exitCode}. Output: ${output}`);
