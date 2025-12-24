@@ -225,7 +225,7 @@ services:
     ports:
       - "${BACKEND_PORT_DEFAULT%:*}:3102"
     extra_hosts:
-      - "host.docker.internal:${HOST_IP}"
+      - "host.docker.internal:\${HOST_IP}"
     volumes:
       - "${BASE_DIR}/.ssh/id_rsa:/app/ssh_key:ro"
     environment:
@@ -235,7 +235,7 @@ services:
       TERMINAL_LINK_TOKEN_TTL_SECONDS: "${DEFAULT_LINK_TOKEN_TTL}"
       TERMINAL_COOKIE_SECURE: "${DEFAULT_COOKIE_SECURE}"
       NODE_ENV: "production"
-      TERMINAL_SSH_TARGET: "${SSH_TARGET}"
+      TERMINAL_SSH_TARGET: "\${SSH_TARGET}"
       TERMINAL_SSH_KEY: "/app/ssh_key"
     restart: unless-stopped
 

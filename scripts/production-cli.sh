@@ -98,6 +98,26 @@ cmd_up() {
   (
     cd "$BASE_DIR"
     export $(grep -v '^#' .env | xargs)
+    
+    # ---------------------------------------------------------
+    # DYNAMIC CONFIGURATION (Runtime)
+    # ---------------------------------------------------------
+    # WSLのIPは再起動で変わるため、毎回動的に取得して環境変数にセットする
+    # これにより docker-compose.yml 内の ${HOST_IP} や ${SSH_TARGET} が
+    # 正しい最新の値を参照できるようになる
+    
+    # IP取得
+    CURRENT_HOST_IP=$(hostname -I | awk '{print $1}')
+    export HOST_IP="$CURRENT_HOST_IP"
+    
+    # SSHターゲット構築 (ユーザー名@IP)
+    CURRENT_USER=$(whoami)
+    export SSH_TARGET="${CURRENT_USER}@${CURRENT_HOST_IP}"
+    
+    echo "[aoi-terminals] 🌍 Dynamic Host IP: $HOST_IP"
+    echo "[aoi-terminals] 🎯 SSH Target: $SSH_TARGET"
+    # ---------------------------------------------------------
+
     $COMPOSE_CMD up -d
   )
 
