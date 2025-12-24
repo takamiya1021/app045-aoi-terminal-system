@@ -277,44 +277,24 @@ services:
     restart: unless-stopped
 YAML
 
-# 既存 .env があれば基本は尊重。
-if [[ "$token_source" == "generated" ]]; then
-
-  cat >"$BASE_DIR/.env" <<ENV
-AOI_TERMINALS_IMAGE_REPO=${IMAGE_REPO}
-AOI_TERMINALS_TAG=${TAG}
-TERMINAL_TOKEN=${TERMINAL_TOKEN}
-TERMINAL_PUBLIC_BASE_URL=${PUBLIC_BASE_URL}
+# .env は常に上書き（フォーマットを常に最新・正しい状態に保つ）
+# ただし既存のトークンがあれば保持する
+cat >"$BASE_DIR/.env" <<ENV
+AOI_TERMINALS_IMAGE_REPO="${IMAGE_REPO}"
+AOI_TERMINALS_TAG="${TAG}"
+TERMINAL_TOKEN="${TERMINAL_TOKEN}"
+TERMINAL_PUBLIC_BASE_URL="${PUBLIC_BASE_URL}"
 ALLOWED_ORIGINS="${DEFAULT_ALLOWED_ORIGINS},${PUBLIC_ORIGIN}"
-TERMINAL_LINK_TOKEN_TTL_SECONDS=${DEFAULT_LINK_TOKEN_TTL}
-TERMINAL_COOKIE_SECURE=${DEFAULT_COOKIE_SECURE}
-BACKEND_NODE_ENV=production
-BASE_DIR=${BASE_DIR}
-HOST_IP=${HOST_IP}
-SSH_TARGET=${SSH_TARGET}
-BACKEND_PORT=${BACKEND_PORT_DEFAULT}
-FRONTEND_PORT=${FRONTEND_PORT_DEFAULT}
+TERMINAL_LINK_TOKEN_TTL_SECONDS="${DEFAULT_LINK_TOKEN_TTL}"
+TERMINAL_COOKIE_SECURE="${DEFAULT_COOKIE_SECURE}"
+BACKEND_NODE_ENV="production"
+BASE_DIR="${BASE_DIR}"
+HOST_IP="${HOST_IP}"
+SSH_TARGET="${SSH_TARGET}"
+BACKEND_PORT="${BACKEND_PORT_DEFAULT}"
+FRONTEND_PORT="${FRONTEND_PORT_DEFAULT}"
 ENV
-  echo "[aoi-terminals] 📝 Created new environment file: $BASE_DIR/.env"
-else
-  if [[ -n "${TERMINAL_TOKEN:-}" ]]; then
-    token_source="provided"
-    if grep -qE '^TERMINAL_TOKEN=' "$BASE_DIR/.env"; then
-      sed -i "s/^TERMINAL_TOKEN=.*/TERMINAL_TOKEN=${TERMINAL_TOKEN}/" "$BASE_DIR/.env"
-    else
-      printf "\nTERMINAL_TOKEN=%s\n" "$TERMINAL_TOKEN" >>"$BASE_DIR/.env"
-    fi
-  fi
-
-  # 既存 .env でも必要事項は常に最新の状態で更新・追記
-  ensure_env_value "TERMINAL_PUBLIC_BASE_URL" "$PUBLIC_BASE_URL" "$BASE_DIR/.env"
-  append_allowed_origin_if_missing "$PUBLIC_ORIGIN" "$BASE_DIR/.env"
-  ensure_env_value "BASE_DIR" "$BASE_DIR" "$BASE_DIR/.env"
-  ensure_env_value "HOST_IP" "$HOST_IP" "$BASE_DIR/.env"
-  ensure_env_value "SSH_TARGET" "$SSH_TARGET" "$BASE_DIR/.env"
-  ensure_env_value "BACKEND_PORT" "$BACKEND_PORT_DEFAULT" "$BASE_DIR/.env"
-  ensure_env_value "FRONTEND_PORT" "$FRONTEND_PORT_DEFAULT" "$BASE_DIR/.env"
-fi
+echo "[aoi-terminals] 📝 Updated environment file: $BASE_DIR/.env"
 
 # 5. プロダクト用ツールとスクリプトの配置
 # ---------------------------------------------------------
