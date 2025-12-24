@@ -61,42 +61,29 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
 ### 前提条件
 
 1. **Docker**: [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/) または WSL上のDockerが動作していること
-2. **Tailscale（推奨）**: 外出先から接続する場合、Windowsとモバイル端末の両方に [Tailscale](https://tailscale.com/) が導入されていること
+3. **一般ユーザー**: `root` ではなく、標準の一般ユーザーで実行すること
 
 ### 1. 最短起動（GHCR・推奨）
 
-ビルド不要で、1コマンドで全自動セットアップします。
+ビルド不要で、1コマンドで全自動セットアップし、起動用CLIをご利用の環境へ導入します。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/install-docker.sh \
-  | bash
+# インストーラーを実行 (インストールのみ完了します)
+curl -L "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/install-docker.sh?v=$(date +%s)" | bash
 ```
 
 > [!TIP]
 > **更新方法**: 最新版に更新したい場合は、同じコマンドを再実行するだけでOKです。
 
-### 2. Docker Composeで起動
+### 2. 使い方・運用手順
 
-ソースコードから自分でビルドして運用したい場合です。
+インストール完了後は、専用のCLIツール `aoi-terminals` が使用可能になります。
 
-```sh
-# クローン
-git clone https://github.com/takamiya1021/app045-aoi-terminal-system.git
-cd app045-aoi-terminal-system
-
-# 設定
-cp .env.docker.example .env
-
-# 起動
-docker compose up -d --build
-```
-
-### 使い方・運用手順
-
-1. **コンテナ起動**: Docker Desktop等で `aoi-terminals` コンテナを起動。
-2. **QRコード表示**: WSLターミナルで `~/.aoi-terminals/print-share-qr.sh` を実行。
+1. **システムの起動**: ターミナルで `aoi-terminals start` を実行。コンテナが立ち上がり、QRコードが表示されます。
+2. **情報の確認**: `aoi-terminals info` で現在のログインURL（トークン付き）を確認できます。
 3. **モバイル接続**: 表示されたQRをスマホで読み取れば、24時間有効なセッションが開始されます。
 4. **ホスト連携**: プロンプトが `ustar-wsl-2-2@STAR` のように表示され、WSLホストを直接操作できます。
+5. **システムの停止**: `aoi-terminals stop` で全コンテナを安全に停止します。
 
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 

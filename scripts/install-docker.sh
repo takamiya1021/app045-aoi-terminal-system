@@ -13,6 +13,16 @@ set -euo pipefail
 
 # 1. 基本設定
 # ---------------------------------------------------------
+# Rootユーザーチェック
+if [[ $EUID -eq 0 ]]; then
+   echo "❌ Error: This script must NOT be run as root."
+   echo "   Please run as a normal user (e.g. your WSL default user)."
+   echo ""
+   echo "❌ エラー: このスクリプトは root ユーザーでは実行できません。"
+   echo "   一般ユーザー（WSLのデフォルトユーザーなど）で実行してください。"
+   exit 1
+fi
+
 DEFAULT_IMAGE_REPO="ghcr.io/takamiya1021/app045-aoi-terminal-system"
 DEFAULT_TAG="latest"
 DEFAULT_INSTALL_DIR="$HOME/.aoi-terminals"
