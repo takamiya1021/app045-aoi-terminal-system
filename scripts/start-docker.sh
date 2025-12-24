@@ -27,10 +27,28 @@ PUBLIC_BASE_URL="$(read_env_value "TERMINAL_PUBLIC_BASE_URL" "$ENV_FILE")"
 BACKEND_PORT="$(read_env_value "BACKEND_PORT" "$ENV_FILE")"
 FRONTEND_PORT="$(read_env_value "FRONTEND_PORT" "$ENV_FILE")"
 
-# 2. Windows Port Forwarding Setup
+# 2. Windows Port Forwarding Setup & IP Detection
 # ---------------------------------------------------------
 if [[ "$PUBLIC_BASE_URL" != http://localhost:* ]] && [[ "$PUBLIC_BASE_URL" != http://127.0.0.1:* ]]; then
+  # Tailscale優先でIPを再取得（.envの値が古い場合や環境が変わった場合のため）
+  ts_exe=""
+  if command -v tailscale.exe >/dev/null 2>&1; then
+    ts_exe="tailscale.exe"
+  elif [[ -f "/mnt/c/Program Files/Tailscale/tailscale.exe" ]]; then
+    ts_exe="/mnt/c/Program Files/Tailscale/tailscale.exe"
+  elif command -v tailscale >/dev/null 2>&1; then
+    ts_exe="tailscale"
+  fi
+
   WSL_IP=$(hostname -I | awk '{print $1}')
+  
+  if [[ -n "$ts_exe" ]]; then
+    TS_IP="$("$ts_exe" ip -4 2>/dev/null | tr -d '\r' | head -n 1 || true)"
+    if [[ -n "$TS_IP" ]]; then
+      PUBLIC_BASE_URL="http://${TS_IP}:${FRONTEND_PORT}"
+    fi
+  fi
+
   echo "[aoi-terminals] 🔧 Setting up Windows port forwarding..."
   echo "   WSL2 IP: $WSL_IP"
   echo "   Public URL: $PUBLIC_BASE_URL"

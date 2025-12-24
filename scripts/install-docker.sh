@@ -58,29 +58,19 @@ detect_public_base_url() {
     return 0
   fi
 
-  # Tailscale前提: MagicDNS(hostname) -> Tailscale IPv4 の順で探す（取れなければ後段へ）
-  if command -v tailscale >/dev/null 2>&1; then
-    if command -v python3 >/dev/null 2>&1; then
-      local dns_name=""
-      dns_name="$(
-        tailscale status --json 2>/dev/null | python3 - <<'PY'
-import sys, json
-try:
-  j = json.load(sys.stdin)
-  dns = (((j.get("Self") or {}).get("DNSName")) or "").rstrip(".")
-  print(dns, end="")
-except Exception:
-  pass
-PY
-      )"
-      if [[ -n "$dns_name" ]]; then
-        printf "http://%s:%s" "$dns_name" "$port"
-        return 0
-      fi
-    fi
+  # Tailscale優先: Windows側の tailscale.exe または Linux側の tailscale を探す
+  local ts_exe=""
+  if command -v tailscale.exe >/dev/null 2>&1; then
+    ts_exe="tailscale.exe"
+  elif [[ -f "/mnt/c/Program Files/Tailscale/tailscale.exe" ]]; then
+    ts_exe="/mnt/c/Program Files/Tailscale/tailscale.exe"
+  elif command -v tailscale >/dev/null 2>&1; then
+    ts_exe="tailscale"
+  fi
 
+  if [[ -n "$ts_exe" ]]; then
     local ts_ip=""
-    ts_ip="$(tailscale ip -4 2>/dev/null | head -n 1 || true)"
+    ts_ip="$("$ts_exe" ip -4 2>/dev/null | tr -d '\r' | head -n 1 || true)"
     if [[ -n "$ts_ip" ]]; then
       printf "http://%s:%s" "$ts_ip" "$port"
       return 0

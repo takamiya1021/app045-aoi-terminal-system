@@ -37,13 +37,18 @@ fi
 BASE_URL="${TERMINAL_PUBLIC_BASE_URL:-}"
 if [[ -z "$BASE_URL" ]]; then
   # 以前のロジックでベストエフォートに取得
-  if command -v tailscale >/dev/null 2>&1; then
-    ts_ip="$(tailscale ip -4 2>/dev/null | head -n 1 || true)"
-    if [[ -n "$ts_ip" ]]; then
-      BASE_URL="http://${ts_ip}:${FRONTEND_PORT}"
-    fi
-  elif command -v tailscale.exe >/dev/null 2>&1; then
-    ts_ip="$(tailscale.exe ip -4 2>/dev/null | tr -d '\r' | head -n 1 || true)"
+  # Tailscale優先: Windows側の tailscale.exe または Linux側の tailscale を探す
+  ts_exe=""
+  if command -v tailscale.exe >/dev/null 2>&1; then
+    ts_exe="tailscale.exe"
+  elif [[ -f "/mnt/c/Program Files/Tailscale/tailscale.exe" ]]; then
+    ts_exe="/mnt/c/Program Files/Tailscale/tailscale.exe"
+  elif command -v tailscale >/dev/null 2>&1; then
+    ts_exe="tailscale"
+  fi
+
+  if [[ -n "$ts_exe" ]]; then
+    ts_ip="$("$ts_exe" ip -4 2>/dev/null | tr -d '\r' | head -n 1 || true)"
     if [[ -n "$ts_ip" ]]; then
       BASE_URL="http://${ts_ip}:${FRONTEND_PORT}"
     fi
