@@ -302,8 +302,7 @@ if [[ "$PUBLIC_BASE_URL" != http://localhost:* ]] && [[ "$PUBLIC_BASE_URL" != ht
   curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/setup-port-forwarding.ps1" > "$BASE_DIR/setup-port-forwarding.ps1"
 
   # PowerShellスクリプトを管理者権限で実行（UACプロンプト表示）
-  SCRIPT_PATH_WIN=$(wslpath -w "$BASE_DIR/setup-port-forwarding.ps1")
-  # プロセスを別ウィンドウ（-Waitあり）で実行し、お嬢がEnterを押せるようにする
+  # -Wait は残すが、PS1側の Read-Key を消したので自動で閉じるようになる
   powershell.exe -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \"$SCRIPT_PATH_WIN\" -WSL_IP $WSL_IP' -Wait"
 
   if [[ $? -eq 0 ]]; then
@@ -345,6 +344,7 @@ fi
 
 if [[ -n "$final_token" ]]; then
   echo "🔑 Login token: ${final_token}"
+  echo "🔗 Login URL:   ${PUBLIC_BASE_URL%/?}/?token=${final_token}"
   echo "   (Stored in: ${BASE_DIR}/.env)"
 else
   echo "⚠️  Login token not found in ${BASE_DIR}/.env"

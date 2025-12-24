@@ -41,5 +41,3 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Setup completed!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Press any key to close..."
-$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
