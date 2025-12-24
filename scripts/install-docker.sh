@@ -200,7 +200,9 @@ fi
 CURRENT_USER=$(whoami)
 # コンテナから見たホストIP
 HOST_IP=$(hostname -I | awk '{print $1}')
-SSH_TARGET="${CURRENT_USER}@host.docker.internal"
+# Docker Desktop on Windowsの場合、host.docker.internal は Windows側を指してしまう。
+# WSL内のSSHサーバーに繋ぐため、直接IPを指定する。
+SSH_TARGET="${CURRENT_USER}@${HOST_IP}"
 
 PUBLIC_BASE_URL="$(detect_public_base_url)"
 PUBLIC_ORIGIN="${PUBLIC_BASE_URL%/}"
