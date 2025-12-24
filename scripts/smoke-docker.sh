@@ -22,7 +22,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
 fi
 
 echo "[aoi-terminals] compose up (build) ..."
-docker compose --env-file "$ENV_FILE" up -d --build
+docker compose -f "$ROOT_DIR/docker-compose.ghcr.yml" --env-file "$ENV_FILE" up -d --build
 
 echo "[aoi-terminals] waiting for backend /health ..."
 deadline="$((SECONDS + 60))"

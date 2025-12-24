@@ -85,12 +85,15 @@ export class TmuxHelper {
           resolve(this.parseTmuxWindows(output));
         } else {
           // セッション未確立や接続拒否、ホスト未到達などは正常な「未準備」状態として扱う
+          const lowerOutput = output.toLowerCase();
           const isExpectedError =
-            output.includes('can\'t find session') ||
-            output.includes('failed to connect to server') ||
-            output.includes('Connection refused') ||
-            output.includes('Permission denied') ||
-            output.includes('no such file or directory');
+            lowerOutput.includes('can\'t find session') ||
+            lowerOutput.includes('failed to connect to server') ||
+            lowerOutput.includes('connection refused') ||
+            lowerOutput.includes('permission denied') ||
+            lowerOutput.includes('no such file or directory') ||
+            lowerOutput.includes('error connecting to') ||
+            lowerOutput.includes('no server running on');
 
           if (isExpectedError) {
             logger.debug(`Tmux session ${tmuxSessionName} not ready or target unreachable. Output: ${output.trim()}`);

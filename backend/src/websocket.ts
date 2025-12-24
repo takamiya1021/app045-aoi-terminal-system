@@ -148,7 +148,7 @@ export function createWebSocketServer(server: http.Server): WebSocketServer {
               await tmuxHelper.executeCommand(ptySessionId, parsedMessage.command, parsedMessage.args);
             } catch (error) {
               const message = error instanceof Error ? error.message : String(error);
-              ws.send(JSON.stringify({ type: 'output', data: `\r\n[tmux-error] ${message}\r\n` } as ServerMessage));
+              ws.send(JSON.stringify({ type: 'error', message: `[tmux-command-error] ${message}` } as ServerMessage));
             }
             break;
           }
@@ -162,7 +162,8 @@ export function createWebSocketServer(server: http.Server): WebSocketServer {
               } as ServerMessage));
             } catch (error) {
               const message = error instanceof Error ? error.message : String(error);
-              ws.send(JSON.stringify({ type: 'output', data: `\r\n[tmux-error] ${message}\r\n` } as ServerMessage));
+              // Background status info errors should NOT be sent as terminal output spam
+              ws.send(JSON.stringify({ type: 'error', message: `[tmux-status-error] ${message}` } as ServerMessage));
             }
             break;
           default:

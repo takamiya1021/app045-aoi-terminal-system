@@ -19,3 +19,5 @@
 
 # Nested git dirs (このリポジトリ配下に紛れ込んでるやつ対策)
 frontend/.git/
+backend/ssh_key
+.playwright-mcp/
