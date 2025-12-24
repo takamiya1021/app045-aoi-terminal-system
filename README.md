@@ -120,7 +120,13 @@ Aoi-Terminalsをローカル環境で実行するための手順を説明しま�
 
 ### 前提条件
 
-以下のソフトウェアがインストールされている必要があります：
+以下の環境が必要です：
+
+#### Tailscale（VPN接続用）
+* [Tailscale](https://tailscale.com/) がWindowsにセットアップ済みであること
+* Tailscale がモバイル端末にもセットアップ済みであること
+* TailscaleをONにして、モバイル端末からWindowsにpingが飛ぶことを確認してください
+  - 通信経路：モバイル端末 ←(VPN)→ Windows ←→ WSL
 
 #### Docker使用（推奨）
 * [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/) をインストール
@@ -165,6 +171,8 @@ GitHub Container Registry（GHCR）にあるビルド済みイメージを使っ
 
 **前提条件**:
 - Docker Desktop for Windowsが起動していること
+
+以下のコマンドを実行
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/install-docker.sh \
@@ -254,7 +262,7 @@ WSL/Linux環境で、Node.jsを直接叩いて開発・テストする場合や�
 
 ---
 
-### 環境設定（Tailscale経由で繋がらない場合）
+### Tailscale経由で繋がらない場合
 
 TailscaleのIPでアクセスできるように、`.env` ファイル（`~/.aoi-terminals/.env`）の `ALLOWED_ORIGINS` にTailscaleのIPアドレスが含まれているか確認してください。
 `install-docker.sh` を使用した場合、Tailscaleが有効であれば自動的に設定されます。
