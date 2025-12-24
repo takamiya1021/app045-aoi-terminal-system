@@ -174,8 +174,17 @@ if [[ ! -f "$SSH_KEY" ]]; then
 fi
 
 # 権限の自動修復 (常に実行)
+echo "[debug] Before chown:"
+ls -l "$SSH_KEY" || true
+
 # コンテナ内のnodeユーザー(1000)が読めるように所有者を変更
-chown 1000:1000 "$SSH_KEY" 2>/dev/null || true
+if ! chown 1000:1000 "$SSH_KEY"; then
+  echo "⚠️ Failed to chown $SSH_KEY to 1000:1000. Trying chmod 644..."
+  chmod 644 "$SSH_KEY"
+fi
+
+echo "[debug] After chown/chmod:"
+ls -l "$SSH_KEY"
 
 # ホスト側の authorized_keys に登録
 PUB_KEY_CONTENT=$(cat "${SSH_KEY}.pub")
