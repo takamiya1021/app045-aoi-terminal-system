@@ -294,6 +294,11 @@ echo "---"
 
 # 初回起動の実行
 echo "🚀 Starting the system for the first time..."
+
+# 最新イメージを確実に取得 (Update時のため)
+echo "[aoi-terminals] 📥 Pulling latest images..."
+(cd "$BASE_DIR" && "${COMPOSE[@]}" pull)
+
 # パイプ実行時でも入力を奪われないように /dev/null をリダイレクト
 bash "$BASE_DIR/aoi-terminals" start < /dev/null
 
