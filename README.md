@@ -80,6 +80,30 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
 1. **Docker**: [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/) または WSL上のDockerが動作していること
 3. **一般ユーザー**: `root` ではなく、標準の一般ユーザーで実行すること
 
+#### WSL2環境での注意事項（Ubuntu 24.04以降）
+
+Ubuntu 24.04以降では、systemdがデフォルトで有効化されており、`systemd-binfmt`サービスがWSL Interop（WindowsコマンドをWSLから実行する機能）を無効化してしまう場合があります。
+
+**症状**：
+- `notepad.exe`や`explorer.exe`などのWindowsコマンドが実行できない
+- Docker Desktopとの連携に問題が発生する
+
+**恒久的な対策**：
+```bash
+# WSL Interopを保護する設定ファイルを作成
+sudo mkdir -p /etc/binfmt.d
+echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /etc/binfmt.d/WSLInterop.conf
+```
+
+この設定により、WSL再起動後も自動的にWSL Interopが有効化されます。
+
+**確認方法**：
+```bash
+# WSL再起動後に実行
+notepad.exe
+# メモ帳が起動すればOK
+```
+
 ### 1. 最短起動（GHCR・推奨）
 
 ビルド不要で、1コマンドで全自動セットアップし、起動用CLIをご利用の環境へ導入します。
@@ -136,6 +160,30 @@ curl -L "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-syst
 - **npm**: 最新版推奨
 - **tmux**: インストール済みであること (`sudo apt install tmux`)
 - **node-pty依存**: ビルド用に `python3`, `make`, `g++` が必要
+
+#### WSL2環境での注意事項（Ubuntu 24.04以降）
+
+Ubuntu 24.04以降では、systemdがデフォルトで有効化されており、`systemd-binfmt`サービスがWSL Interop（WindowsコマンドをWSLから実行する機能）を無効化してしまう場合があります。
+
+**症状**：
+- `notepad.exe`や`explorer.exe`などのWindowsコマンドが実行できない
+- 開発ツールの一部機能に影響が出る
+
+**恒久的な対策**：
+```bash
+# WSL Interopを保護する設定ファイルを作成
+sudo mkdir -p /etc/binfmt.d
+echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /etc/binfmt.d/WSLInterop.conf
+```
+
+この設定により、WSL再起動後も自動的にWSL Interopが有効化されます。
+
+**確認方法**：
+```bash
+# WSL再起動後に実行
+notepad.exe
+# メモ帳が起動すればOK
+```
 
 ### セットアップと起動
 
