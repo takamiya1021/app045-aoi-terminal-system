@@ -41,6 +41,14 @@
 
 Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナル操作ができるWebベースのリモートターミナルシステムです。Tailscaleなどのプライベートネットワーク越しに、ワンタイム共有リンク（QR）で安全に接続できます。
 
+## デモ・スクリーンショット
+
+<div align="center">
+  <img src="frontend/public/screenshot-main.png" alt="Main Screen" width="800">
+  <br>
+  <em>モバイルでも快適な操作が可能なターミナルUI</em>
+</div>
+
 ### 主な機能
 
 - 📱 **モバイル最適**: 日本語IMEに強く、Androidでも入力しやすい設計
@@ -180,3 +188,19 @@ curl -L "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-syst
 
 ---
 あおいさん - [@takamiya1021](https://github.com/takamiya1021)
+
+<!-- Badge Definitions -->
+[Next-shield]: https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js&logoColor=white
+[Next-url]: https://nextjs.org/
+[React-shield]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
+[React-url]: https://reactjs.org/
+[TypeScript-shield]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
+[TypeScript-url]: https://www.typescriptlang.org/
+[Node-shield]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
+[Node-url]: https://nodejs.org/
+[Docker-shield]: https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white
+[Docker-url]: https://www.docker.com/
+[Actions-shield]: https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white
+[Actions-url]: https://github.com/features/actions
+[License-shield]: https://img.shields.io/github/license/takamiya1021/app045-aoi-terminal-system.svg?style=for-the-badge
+[License-url]: https://github.com/takamiya1021/app045-aoi-terminal-system/blob/main/LICENSE
