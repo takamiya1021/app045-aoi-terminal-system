@@ -76,14 +76,34 @@ curl -L "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-syst
 > **更新方法**: 最新版に更新したい場合は、同じコマンドを再実行するだけでOKです。
 
 ### 2. 使い方・運用手順
+> [!NOTE]
+> Windowsの方は、インストール直後に開かれるフォルダ内の `windows-run.bat` をダブルクリックするだけで起動できます。
 
 インストール完了後は、専用のCLIツール `aoi-terminals` が使用可能になります。
 
-1. **システムの起動**: ターミナルで `~/.aoi-terminals/aoi-terminals start` を実行。コンテナが立ち上がり、QRコードが表示されます。
-2. **情報の確認**: `~/.aoi-terminals/aoi-terminals info` で現在のログインURL（トークン付き）を確認できます。
-3. **モバイル接続**: 表示されたQRをスマホで読み取れば、24時間有効なセッションが開始されます。
-4. **ホスト連携**: プロンプトが `ustar-wsl-2-2@STAR` のように表示され、WSLホストを直接操作できます。
-5. **システムの停止**: `aoi-terminals stop` で全コンテナを安全に停止します。
+#### 起動と停止
+- **`start`** (`up`): システムを起動し、ログイン用QRコードを表示します。
+  ```bash
+  ~/.aoi-terminals/aoi-terminals start
+  ```
+- **`stop`** (`down`): 全てのシステム（コンテナ）を停止します。
+  ```bash
+  ~/.aoi-terminals/aoi-terminals stop
+  ```
+
+#### 状態確認とメンテナンス
+- **`info`**: 現在のシステム設定（ログインURL、マスターキー、インストール先）を表示します。
+  ```bash
+  ~/.aoi-terminals/aoi-terminals info
+  ```
+- **`qr`**: ログイン用QRコード（5分間有効）を再発行して表示します。
+  ```bash
+  ~/.aoi-terminals/aoi-terminals qr
+  ```
+- **`logs`**: コンテナの実行ログを流し見します（終了は `Ctrl+C`）。
+  ```bash
+  ~/.aoi-terminals/aoi-terminals logs
+  ```
 
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 

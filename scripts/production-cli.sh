@@ -150,7 +150,7 @@ cmd_up() {
   )
 
   echo "✅ System is online!"
-  cmd_info
+  # cmd_info  <-- ノイズになるため非表示 (確認したければ 'info' コマンドを使用)
   cmd_qr
 }
 
