@@ -60,6 +60,7 @@ usage() {
 cmd_up() {
   # 1. Port Forwarding & IP Detection
   local detected_ip=""
+  local wsl_ip=$(hostname -I | awk '{print $1}')
   
   # Try to detect Windows Tailscale IP (Best effort)
   if command -v tailscale.exe >/dev/null 2>&1; then
