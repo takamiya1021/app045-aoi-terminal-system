@@ -48,7 +48,7 @@ fi
 # WSL Interop チェック・自動有効化
 # ---------------------------------------------------------
 echo "[aoi-terminals] 🔍 Checking WSL Interop..."
-if ! notepad.exe --help &>/dev/null; then
+if ! cmd.exe /c "exit 0" &>/dev/null; then
   echo "[aoi-terminals] ⚠️  WSL Interop is disabled. Enabling..."
 
   # systemd の有無で処理を分岐
@@ -81,7 +81,7 @@ if ! notepad.exe --help &>/dev/null; then
   fi
 
   # 有効化確認
-  if notepad.exe --help &>/dev/null; then
+  if cmd.exe /c "exit 0" &>/dev/null; then
     echo "[aoi-terminals] ✅ WSL Interop enabled successfully"
   else
     echo "[aoi-terminals] ⚠️  WSL Interop setup completed, but requires WSL restart."
