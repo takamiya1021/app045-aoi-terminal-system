@@ -21,15 +21,22 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-# Load variables safely (strips surrounding quotes)
+# Load variables safely (strips surrounding quotes - handles multiple quote patterns)
 read_env_value() {
   local key="$1"
   local file="$2"
   local val
   val="$(grep -E "^${key}=" "$file" | tail -n 1 | cut -d'=' -f2- || true)"
-  # Remove surrounding quotes if present
-  val="${val%\"}"
-  val="${val#\"}"
+  # Remove surrounding double quotes if present (handle nested quotes too)
+  while [[ "$val" == \"*\" ]]; do
+    val="${val%\"}"
+    val="${val#\"}"
+  done
+  # Remove surrounding single quotes if present
+  while [[ "$val" == \'*\' ]]; do
+    val="${val%\'}"
+    val="${val#\'}"
+  done
   printf "%s" "$val"
 }
 

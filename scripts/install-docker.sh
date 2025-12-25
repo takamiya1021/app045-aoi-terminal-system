@@ -359,6 +359,9 @@ chmod +x "$BASE_DIR/aoi-terminals"
 # Windows用ランチャー (windows-run.bat)
 curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/windows-run.bat" > "$BASE_DIR/windows-run.bat"
 
+# Windows Port Forwarding スクリプト
+curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/setup-port-forwarding.ps1" > "$BASE_DIR/setup-port-forwarding.ps1"
+
 
 # 6. セットアップ完了と起動
 # ---------------------------------------------------------
