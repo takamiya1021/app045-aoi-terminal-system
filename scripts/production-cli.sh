@@ -21,14 +21,14 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-# Load variables safely - stripping quotes
+# Load variables safely
 read_env_value() {
   local key="$1"
   local file="$2"
-  grep -E "^${key}=" "$file" | tail -n 1 | cut -d'=' -f2- | tr -d '"' || true
+  grep -E "^${key}=" "$file" | tail -n 1 | cut -d'=' -f2- || true
 }
 
-export TERMINAL_TOKEN="$(read_env_value "TERMINAL_TOKEN" "$ENV_FILE")"
+TERMINAL_TOKEN="$(read_env_value "TERMINAL_TOKEN" "$ENV_FILE")"
 PUBLIC_BASE_URL="$(read_env_value "TERMINAL_PUBLIC_BASE_URL" "$ENV_FILE")"
 FRONTEND_PORT="$(read_env_value "FRONTEND_PORT" "$ENV_FILE")"
 
@@ -77,7 +77,7 @@ cmd_up() {
     PUBLIC_BASE_URL="http://${detected_ip}:${FRONTEND_PORT}"
     # Also export it so subprocesses (print-share-qr.sh) can use it
     export TERMINAL_PUBLIC_BASE_URL="$PUBLIC_BASE_URL"
-    echo "[aoi-terminals] ✅ Tailscale IP Detected: $detected_ip"
+    echo "[aoi-terminals]    (外部から接続するには、WindowsにTailscaleのインストールが必要じゃなぁ)"
   fi
 
   if [[ "$PUBLIC_BASE_URL" != http://localhost:* ]] && [[ "$PUBLIC_BASE_URL" != http://127.0.0.1:* ]]; then
@@ -134,14 +134,18 @@ cmd_up() {
     # これにより docker-compose.yml 内の ${HOST_IP} や ${SSH_TARGET} が
     # 正しい最新の値を参照できるようになる
     
+    # ベースディレクトリ（スクリプト起動時に自動検出済み）
+    export BASE_DIR="$BASE_DIR"
+
     # IP取得
     CURRENT_HOST_IP=$(hostname -I | awk '{print $1}')
     export HOST_IP="$CURRENT_HOST_IP"
-    
+
     # SSHターゲット構築 (ユーザー名@IP)
     CURRENT_USER=$(whoami)
     export SSH_TARGET="${CURRENT_USER}@${CURRENT_HOST_IP}"
-    
+
+    echo "[aoi-terminals] 📁 Base Directory: $BASE_DIR"
     echo "[aoi-terminals] 🌍 Dynamic Host IP: $HOST_IP"
     echo "[aoi-terminals] 🎯 SSH Target: $SSH_TARGET"
     # ---------------------------------------------------------
@@ -150,7 +154,7 @@ cmd_up() {
   )
 
   echo "✅ System is online!"
-  # cmd_info  <-- ノイズになるため非表示 (確認したければ 'info' コマンドを使用)
+  cmd_info
   cmd_qr
 }
 
@@ -158,6 +162,17 @@ cmd_down() {
   echo "[aoi-terminals] 🛑 Stopping systems..."
   (
     cd "$BASE_DIR"
+    set -a
+    source "$ENV_FILE"
+    set +a
+
+    # 動的な値をexport（停止時も警告を出さないため）
+    export BASE_DIR="$BASE_DIR"
+    CURRENT_HOST_IP=$(hostname -I | awk '{print $1}')
+    export HOST_IP="$CURRENT_HOST_IP"
+    CURRENT_USER=$(whoami)
+    export SSH_TARGET="${CURRENT_USER}@${CURRENT_HOST_IP}"
+
     $COMPOSE_CMD down
   )
   echo "✅ Stopped."
@@ -172,9 +187,11 @@ cmd_logs() {
 
 cmd_info() {
   echo "---"
-  echo "🔑 Login Token: $TERMINAL_TOKEN"
-  echo "🔗 URL:         ${PUBLIC_BASE_URL%/?}/?token=${TERMINAL_TOKEN}"
+  echo "🔑 管理用トークン（Master Token）: $TERMINAL_TOKEN"
+  echo "🔗 管理用URL:    ${PUBLIC_BASE_URL%/?}/?token=${TERMINAL_TOKEN}"
   echo "📁 Directory:   $BASE_DIR"
+  echo "---"
+  echo "⚠️  注意: 管理用トークンは安全に管理してください。一般ユーザーには共有しないでください。"
   echo "---"
 }
 

@@ -253,18 +253,18 @@ services:
   backend:
     image: ${IMAGE_REPO}-backend:${TAG}
     ports:
-      - "${BACKEND_PORT_DEFAULT%:*}:3102"
+      - "\${BACKEND_PORT}:\${BACKEND_PORT}"
     extra_hosts:
       - "host.docker.internal:\${HOST_IP}"
     volumes:
-      - "${BASE_DIR}/.ssh/id_rsa:/app/ssh_key:ro"
+      - "\${BASE_DIR}/.ssh/id_rsa:/app/ssh_key:ro"
     environment:
-      PORT: "3102"
-      ALLOWED_ORIGINS: "${DEFAULT_ALLOWED_ORIGINS},${PUBLIC_ORIGIN}"
-      TERMINAL_TOKEN: "${TERMINAL_TOKEN}"
-      TERMINAL_LINK_TOKEN_TTL_SECONDS: "${DEFAULT_LINK_TOKEN_TTL}"
-      TERMINAL_COOKIE_SECURE: "${DEFAULT_COOKIE_SECURE}"
-      NODE_ENV: "production"
+      PORT: "\${BACKEND_PORT}"
+      ALLOWED_ORIGINS: "\${ALLOWED_ORIGINS}"
+      TERMINAL_TOKEN: "\${TERMINAL_TOKEN}"
+      TERMINAL_LINK_TOKEN_TTL_SECONDS: "\${TERMINAL_LINK_TOKEN_TTL_SECONDS}"
+      TERMINAL_COOKIE_SECURE: "\${TERMINAL_COOKIE_SECURE}"
+      NODE_ENV: "\${BACKEND_NODE_ENV}"
       TERMINAL_SSH_TARGET: "\${SSH_TARGET}"
       TERMINAL_SSH_KEY: "/app/ssh_key"
     restart: unless-stopped
@@ -274,9 +274,9 @@ services:
     depends_on:
       - backend
     ports:
-      - "${FRONTEND_PORT_DEFAULT}:3101"
+      - "\${FRONTEND_PORT}:\${FRONTEND_PORT}"
     environment:
-      NODE_ENV: production
+      NODE_ENV: "\${BACKEND_NODE_ENV}"
     restart: unless-stopped
 YAML
 
@@ -291,9 +291,6 @@ ALLOWED_ORIGINS="${DEFAULT_ALLOWED_ORIGINS},${PUBLIC_ORIGIN}"
 TERMINAL_LINK_TOKEN_TTL_SECONDS="${DEFAULT_LINK_TOKEN_TTL}"
 TERMINAL_COOKIE_SECURE="${DEFAULT_COOKIE_SECURE}"
 BACKEND_NODE_ENV="production"
-BASE_DIR="${BASE_DIR}"
-HOST_IP="${HOST_IP}"
-SSH_TARGET="${SSH_TARGET}"
 BACKEND_PORT="${BACKEND_PORT_DEFAULT}"
 FRONTEND_PORT="${FRONTEND_PORT_DEFAULT}"
 ENV
