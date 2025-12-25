@@ -184,7 +184,7 @@ curl -L "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-syst
 #### アンインストール
 完全に削除したい場合は、アンインストーラーを実行してください：
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/uninstall.sh" | bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/uninstall.sh")
 ```
 
 削除されるもの：
