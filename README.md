@@ -22,13 +22,14 @@
 
 - [概要](#概要)
   - [主な機能](#主な機能)
+- [📋 共通の前提条件](#-共通の前提条件)
+  - [必須要件](#必須要件)
+  - [WSL2環境での注意事項（Ubuntu 24.04以降）](#wsl2環境での注意事項ubuntu-2404以降)
 - [🚀 本番環境（プロダクション・運用）](#-本番環境プロダクション運用)
-  - [前提条件](#前提条件)
   - [1. 最短起動（GHCR・推奨）](#1-最短起動ghcr推奨)
-  - [2. Docker Composeで起動](#2-docker-composeで起動)
-  - [使い方・運用手順](#使い方運用手順)
+  - [2. 使い方・運用手順](#2-使い方運用手順)
 - [🛠️ 開発環境（デバッグ・カスタマイズ）](#️-開発環境デバッグカスタマイズ)
-  - [前提条件](#前提条件-1)
+  - [追加の前提条件](#追加の前提条件)
   - [セットアップと起動](#セットアップと起動)
 - [詳細仕様](#詳細仕様)
   - [認証・セッション](#認証セッション)
@@ -71,16 +72,16 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
 
 ---
 
-## 🚀 本番環境（プロダクション・運用）
+## 📋 共通の前提条件
 
-一般ユーザーの方や、安定して運用したい方向けの設定です。Dockerを使用します。
+本番環境・開発環境どちらでも必要な共通の要件です。
 
-### 前提条件
+### 必須要件
 
 1. **Docker**: [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/) または WSL上のDockerが動作していること
-3. **一般ユーザー**: `root` ではなく、標準の一般ユーザーで実行すること
+2. **一般ユーザー**: `root` ではなく、標準の一般ユーザーで実行すること
 
-#### WSL2環境での注意事項（Ubuntu 24.04以降）
+### WSL2環境での注意事項（Ubuntu 24.04以降）
 
 Ubuntu 24.04以降では、systemdがデフォルトで有効化されており、`systemd-binfmt`サービスがWSL Interop（WindowsコマンドをWSLから実行する機能）を無効化してしまう場合があります。
 
@@ -103,6 +104,14 @@ echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /etc/binfmt.d/WSLInterop.conf
 notepad.exe
 # メモ帳が起動すればOK
 ```
+
+<p align="right">(<a href="#目次">トップへ戻る</a>)</p>
+
+---
+
+## 🚀 本番環境（プロダクション・運用）
+
+一般ユーザーの方や、安定して運用したい方向けの設定です。Dockerを使用します。
 
 ### 1. 最短起動（GHCR・推奨）
 
@@ -154,36 +163,14 @@ curl -L "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-syst
 
 本システムの開発や、直接Node.jsを叩いて挙動を確認したい方向けの設定です。
 
-### 前提条件
+### 追加の前提条件
+
+[共通の前提条件](#-共通の前提条件)に加えて、以下が必要です：
 
 - **Node.js**: v20.0.0 以上
 - **npm**: 最新版推奨
 - **tmux**: インストール済みであること (`sudo apt install tmux`)
 - **node-pty依存**: ビルド用に `python3`, `make`, `g++` が必要
-
-#### WSL2環境での注意事項（Ubuntu 24.04以降）
-
-Ubuntu 24.04以降では、systemdがデフォルトで有効化されており、`systemd-binfmt`サービスがWSL Interop（WindowsコマンドをWSLから実行する機能）を無効化してしまう場合があります。
-
-**症状**：
-- `notepad.exe`や`explorer.exe`などのWindowsコマンドが実行できない
-- 開発ツールの一部機能に影響が出る
-
-**恒久的な対策**：
-```bash
-# WSL Interopを保護する設定ファイルを作成
-sudo mkdir -p /etc/binfmt.d
-echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /etc/binfmt.d/WSLInterop.conf
-```
-
-この設定により、WSL再起動後も自動的にWSL Interopが有効化されます。
-
-**確認方法**：
-```bash
-# WSL再起動後に実行
-notepad.exe
-# メモ帳が起動すればOK
-```
 
 ### セットアップと起動
 
