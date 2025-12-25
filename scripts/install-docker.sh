@@ -50,24 +50,43 @@ fi
 echo "[aoi-terminals] 🔍 Checking WSL Interop..."
 if ! notepad.exe --help &>/dev/null; then
   echo "[aoi-terminals] ⚠️  WSL Interop is disabled. Enabling..."
-  if sudo mkdir -p /etc/binfmt.d && \
-     echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /etc/binfmt.d/WSLInterop.conf >/dev/null && \
-     sudo systemctl restart systemd-binfmt; then
 
-    # 有効化確認
-    if notepad.exe --help &>/dev/null; then
-      echo "[aoi-terminals] ✅ WSL Interop enabled successfully"
+  # systemd の有無で処理を分岐
+  if systemctl --version &>/dev/null; then
+    # systemd 環境：永続設定（再起動後も有効）
+    echo "[aoi-terminals] 📝 Detected systemd environment. Applying persistent configuration..."
+    if sudo mkdir -p /etc/binfmt.d && \
+       echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /etc/binfmt.d/WSLInterop.conf >/dev/null && \
+       sudo systemctl restart systemd-binfmt; then
+      : # Success
     else
-      echo "[aoi-terminals] ⚠️  WSL Interop setup completed, but requires WSL restart."
-      echo "    Please run: wsl --shutdown (from Windows)"
-      echo "    Then restart WSL and run the installer again."
+      echo "[aoi-terminals] ❌ Failed to enable WSL Interop (systemd method)."
+      echo "    Please run manually:"
+      echo "      sudo mkdir -p /etc/binfmt.d"
+      echo "      echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /etc/binfmt.d/WSLInterop.conf"
+      echo "      sudo systemctl restart systemd-binfmt"
+      exit 1
     fi
   else
-    echo "[aoi-terminals] ❌ Failed to enable WSL Interop. Please run manually:"
-    echo "    sudo mkdir -p /etc/binfmt.d"
-    echo "    echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /etc/binfmt.d/WSLInterop.conf"
-    echo "    sudo systemctl restart systemd-binfmt"
-    exit 1
+    # 非systemd環境：即時登録（再起動で消える）
+    echo "[aoi-terminals] 📝 Detected non-systemd environment. Applying immediate registration..."
+    if echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /proc/sys/fs/binfmt_misc/register >/dev/null; then
+      : # Success
+    else
+      echo "[aoi-terminals] ❌ Failed to enable WSL Interop (immediate method)."
+      echo "    Please run manually:"
+      echo "      echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /proc/sys/fs/binfmt_misc/register"
+      exit 1
+    fi
+  fi
+
+  # 有効化確認
+  if notepad.exe --help &>/dev/null; then
+    echo "[aoi-terminals] ✅ WSL Interop enabled successfully"
+  else
+    echo "[aoi-terminals] ⚠️  WSL Interop setup completed, but requires WSL restart."
+    echo "    Please run: wsl --shutdown (from Windows)"
+    echo "    Then restart WSL and run the installer again."
   fi
 else
   echo "[aoi-terminals] ✅ WSL Interop is already enabled"
