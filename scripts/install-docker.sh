@@ -199,12 +199,21 @@ BASE_DIR="$DEFAULT_INSTALL_DIR"
 mkdir -p "$BASE_DIR"
 mkdir -p "$BASE_DIR/.ssh"
 
-# SSH鍵の生成（常に上書き）
+# SSH鍵の生成（初回のみ）
 SSH_KEY="$BASE_DIR/.ssh/id_rsa"
-rm -f "$SSH_KEY" "$SSH_KEY.pub"
-echo "🔑 Generating SSH key..."
-ssh-keygen -t rsa -b 4096 -f "$SSH_KEY" -N "" -C "aoi-terminals-bridge"
-chmod 644 "$SSH_KEY"
+SSH_PUB="${SSH_KEY}.pub"
+if [[ ! -f "$SSH_KEY" ]]; then
+  echo "🔑 Generating SSH key..."
+  ssh-keygen -t rsa -b 4096 -f "$SSH_KEY" -N "" -C "aoi-terminals-bridge"
+else
+  echo "🔑 Using existing SSH key: $SSH_KEY"
+fi
+if [[ ! -f "$SSH_PUB" ]]; then
+  echo "🔑 Regenerating public key from private key..."
+  ssh-keygen -y -f "$SSH_KEY" > "$SSH_PUB"
+fi
+chmod 600 "$SSH_KEY"
+chmod 644 "$SSH_PUB"
 
 # ホスト側の authorized_keys に登録（常に追加）
 echo "[aoi-terminals] 🔑 Registering bridge key..."
