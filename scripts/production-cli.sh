@@ -21,11 +21,11 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-# Load variables safely
+# Load variables safely - stripping quotes
 read_env_value() {
   local key="$1"
   local file="$2"
-  grep -E "^${key}=" "$file" | tail -n 1 | cut -d'=' -f2- || true
+  grep -E "^${key}=" "$file" | tail -n 1 | cut -d'=' -f2- | tr -d '"' || true
 }
 
 TERMINAL_TOKEN="$(read_env_value "TERMINAL_TOKEN" "$ENV_FILE")"
@@ -77,7 +77,7 @@ cmd_up() {
     PUBLIC_BASE_URL="http://${detected_ip}:${FRONTEND_PORT}"
     # Also export it so subprocesses (print-share-qr.sh) can use it
     export TERMINAL_PUBLIC_BASE_URL="$PUBLIC_BASE_URL"
-    echo "[aoi-terminals]    (外部から接続するには、WindowsにTailscaleのインストールが必要じゃなぁ)"
+    echo "[aoi-terminals] ✅ Tailscale IP Detected: $detected_ip"
   fi
 
   if [[ "$PUBLIC_BASE_URL" != http://localhost:* ]] && [[ "$PUBLIC_BASE_URL" != http://127.0.0.1:* ]]; then
