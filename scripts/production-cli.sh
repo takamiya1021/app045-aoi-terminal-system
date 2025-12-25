@@ -60,36 +60,52 @@ usage() {
 cmd_up() {
   # 1. Port Forwarding (Tailscale/Local IP support)
   if [[ "$PUBLIC_BASE_URL" != http://localhost:* ]] && [[ "$PUBLIC_BASE_URL" != http://127.0.0.1:* ]]; then
-    # Detect IP strictly using fixed logic
-    local ts_exe=""
-    if command -v tailscale.exe >/dev/null 2>&1; then
-      ts_exe="tailscale.exe"
-    elif [[ -f "/mnt/c/Program Files/Tailscale/tailscale.exe" ]]; then
-      ts_exe="/mnt/c/Program Files/Tailscale/tailscale.exe"
-    elif command -v tailscale >/dev/null 2>&1; then
-      ts_exe="tailscale"
-    fi
-
+    # WSLからWindows実行が無効だと port forwarding は設定できない
     local wsl_ip=$(hostname -I | awk '{print $1}')
-    if [[ -n "$ts_exe" ]]; then
-      local ts_ip="$("$ts_exe" ip -4 2>/dev/null | tr -d '\r' | head -n 1 || true)"
-      if [[ -n "$ts_ip" ]]; then
-         # Update URL if IP changed
-         PUBLIC_BASE_URL="http://${ts_ip}:${FRONTEND_PORT}"
+    if [[ ! -e /proc/sys/fs/binfmt_misc/WSLInterop ]]; then
+      echo "[aoi-terminals] ⚠️ Windows実行(WSL interop)が無効のため、port forwarding を自動設定できへん。"
+      echo "[aoi-terminals] ▶ Windows (管理者PowerShell) で次を実行してな:"
+      local ps_script="$BASE_DIR/setup-port-forwarding.ps1"
+      if [[ -f "$ps_script" ]]; then
+        local win_script
+        win_script=$(wslpath -w "$ps_script")
+        echo "powershell -NoProfile -ExecutionPolicy Bypass -File \"${win_script}\" -WSL_IP ${wsl_ip}"
+      else
+        echo "(setup-port-forwarding.ps1 が見つからへん)"
       fi
-    fi
+      echo "[aoi-terminals] ℹ️ ついでに TERMINAL_PUBLIC_BASE_URL を Windows の Tailscale IP に合わせてな。"
+      echo "[aoi-terminals]    例: http://<WindowsのTailscale IP>:${FRONTEND_PORT}"
+    else
+      # Detect IP strictly using fixed logic
+      local ts_exe=""
+      if command -v tailscale.exe >/dev/null 2>&1; then
+        ts_exe="tailscale.exe"
+      elif [[ -f "/mnt/c/Program Files/Tailscale/tailscale.exe" ]]; then
+        ts_exe="/mnt/c/Program Files/Tailscale/tailscale.exe"
+      elif command -v tailscale >/dev/null 2>&1; then
+        ts_exe="tailscale"
+      fi
 
-    echo "[aoi-terminals] 🔧 Configuring port forwarding..."
-    local ps_script="$BASE_DIR/setup-port-forwarding.ps1"
-    if [[ -f "$ps_script" ]]; then
-      local win_script=$(wslpath -w "$ps_script")
-      local ps_exe="powershell.exe"
-      if ! command -v powershell.exe >/dev/null 2>&1; then
-        for p in "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe" "/mnt/c/Windows/Sysnative/WindowsPowerShell/v1.0/powershell.exe"; do
-          if [[ -x "$p" ]]; then ps_exe="$p"; break; fi
-        done
+      if [[ -n "$ts_exe" ]]; then
+        local ts_ip="$("$ts_exe" ip -4 2>/dev/null | tr -d '\r' | head -n 1 || true)"
+        if [[ -n "$ts_ip" ]]; then
+           # Update URL if IP changed
+           PUBLIC_BASE_URL="http://${ts_ip}:${FRONTEND_PORT}"
+        fi
       fi
-      "$ps_exe" -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \"$win_script\" -WSL_IP $wsl_ip' -Wait" < /dev/null || true
+
+      echo "[aoi-terminals] 🔧 Configuring port forwarding..."
+      local ps_script="$BASE_DIR/setup-port-forwarding.ps1"
+      if [[ -f "$ps_script" ]]; then
+        local win_script=$(wslpath -w "$ps_script")
+        local ps_exe="powershell.exe"
+        if ! command -v powershell.exe >/dev/null 2>&1; then
+          for p in "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe" "/mnt/c/Windows/Sysnative/WindowsPowerShell/v1.0/powershell.exe"; do
+            if [[ -x "$p" ]]; then ps_exe="$p"; break; fi
+          done
+        fi
+        "$ps_exe" -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \"$win_script\" -WSL_IP $wsl_ip' -Wait" < /dev/null || true
+      fi
     fi
   fi
 
