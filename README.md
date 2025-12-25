@@ -181,6 +181,17 @@ curl -L "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-syst
   ~/.aoi-terminals/aoi-terminals logs
   ```
 
+#### アンインストール
+完全に削除したい場合は、アンインストーラーを実行してください：
+```bash
+curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/uninstall.sh" | bash
+```
+
+削除されるもの：
+- Dockerコンテナ
+- 設定ディレクトリ (`~/.aoi-terminals`)
+- SSH authorized_keys から aoi-terminals-bridge 鍵
+
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 
 ---
