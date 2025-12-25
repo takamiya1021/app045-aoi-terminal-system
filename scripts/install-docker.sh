@@ -260,7 +260,9 @@ if [[ ! -f "$SSH_PUB" ]]; then
   echo "🔑 Regenerating public key from private key..."
   ssh-keygen -y -f "$SSH_KEY" > "$SSH_PUB"
 fi
-chmod 600 "$SSH_KEY"
+# コンテナ内のnodeユーザー(UID 1000)がホストユーザー(UID可変)の鍵を読めるよう644に設定
+# この鍵はaoi-terminalsブリッジ専用で、Dockerボリューム経由でのみ使用される
+chmod 644 "$SSH_KEY"
 chmod 644 "$SSH_PUB"
 
 # ホスト側の authorized_keys に登録（常に追加）

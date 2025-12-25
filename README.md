@@ -110,6 +110,27 @@ notepad.exe
 # メモ帳が起動すればOK
 ```
 
+### 複数のWSLディストリビューションを使用する場合
+
+同じWindows上で複数のWSLディストリビューション（例：Ubuntu-22.04とUbuntu-24.04）を使用している場合、**ポートが競合する**ことがあります。
+
+**競合するポート**：
+- `22` (SSH)
+- `3101` (フロントエンド)
+- `3102` (バックエンド)
+
+**症状**：
+- SSHサーバーが起動できない（`Address already in use`）
+- aoi-terminalsの起動時にポートエラー
+
+**対策**：
+aoi-terminalsを使用するディストリビューション以外では、該当サービスを停止してください：
+```bash
+# 他のディストリビューションで実行
+sudo systemctl stop ssh.socket ssh.service  # SSHを停止
+~/.aoi-terminals/aoi-terminals stop          # aoi-terminalsを停止
+```
+
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 
 ---
