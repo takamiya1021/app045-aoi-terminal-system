@@ -44,6 +44,35 @@ if ! id -nG "$USER" 2>/dev/null | grep -qw "docker"; then
   fi
 fi
 
+# ---------------------------------------------------------
+# WSL Interop チェック・自動有効化
+# ---------------------------------------------------------
+echo "[aoi-terminals] 🔍 Checking WSL Interop..."
+if ! notepad.exe --help &>/dev/null; then
+  echo "[aoi-terminals] ⚠️  WSL Interop is disabled. Enabling..."
+  if sudo mkdir -p /etc/binfmt.d && \
+     echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /etc/binfmt.d/WSLInterop.conf >/dev/null && \
+     sudo systemctl restart systemd-binfmt; then
+
+    # 有効化確認
+    if notepad.exe --help &>/dev/null; then
+      echo "[aoi-terminals] ✅ WSL Interop enabled successfully"
+    else
+      echo "[aoi-terminals] ⚠️  WSL Interop setup completed, but requires WSL restart."
+      echo "    Please run: wsl --shutdown (from Windows)"
+      echo "    Then restart WSL and run the installer again."
+    fi
+  else
+    echo "[aoi-terminals] ❌ Failed to enable WSL Interop. Please run manually:"
+    echo "    sudo mkdir -p /etc/binfmt.d"
+    echo "    echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /etc/binfmt.d/WSLInterop.conf"
+    echo "    sudo systemctl restart systemd-binfmt"
+    exit 1
+  fi
+else
+  echo "[aoi-terminals] ✅ WSL Interop is already enabled"
+fi
+
 DEFAULT_IMAGE_REPO="ghcr.io/takamiya1021/app045-aoi-terminal-system"
 DEFAULT_TAG="latest"
 DEFAULT_INSTALL_DIR="$HOME/.aoi-terminals"
