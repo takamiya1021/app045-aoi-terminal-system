@@ -28,7 +28,7 @@ read_env_value() {
   grep -E "^${key}=" "$file" | tail -n 1 | cut -d'=' -f2- | tr -d '"' || true
 }
 
-TERMINAL_TOKEN="$(read_env_value "TERMINAL_TOKEN" "$ENV_FILE")"
+export TERMINAL_TOKEN="$(read_env_value "TERMINAL_TOKEN" "$ENV_FILE")"
 PUBLIC_BASE_URL="$(read_env_value "TERMINAL_PUBLIC_BASE_URL" "$ENV_FILE")"
 FRONTEND_PORT="$(read_env_value "FRONTEND_PORT" "$ENV_FILE")"
 
