@@ -21,11 +21,16 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-# Load variables safely
+# Load variables safely (strips surrounding quotes)
 read_env_value() {
   local key="$1"
   local file="$2"
-  grep -E "^${key}=" "$file" | tail -n 1 | cut -d'=' -f2- || true
+  local val
+  val="$(grep -E "^${key}=" "$file" | tail -n 1 | cut -d'=' -f2- || true)"
+  # Remove surrounding quotes if present
+  val="${val%\"}"
+  val="${val#\"}"
+  printf "%s" "$val"
 }
 
 TERMINAL_TOKEN="$(read_env_value "TERMINAL_TOKEN" "$ENV_FILE")"
@@ -198,6 +203,11 @@ cmd_info() {
 cmd_qr() {
   echo "🔗 Generating secure login QR code..."
   if [[ -f "$BASE_DIR/print-share-qr.sh" ]]; then
+    # Export variables so print-share-qr.sh uses them instead of reading from .env
+    export TERMINAL_TOKEN
+    export TERMINAL_PUBLIC_BASE_URL="${TERMINAL_PUBLIC_BASE_URL:-$PUBLIC_BASE_URL}"
+    export FRONTEND_PORT
+    export BACKEND_PORT="$(read_env_value "BACKEND_PORT" "$ENV_FILE")"
     bash "$BASE_DIR/print-share-qr.sh"
   else
     echo "❌ Error: print-share-qr.sh not found."
