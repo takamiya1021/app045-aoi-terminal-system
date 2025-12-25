@@ -41,12 +41,21 @@
 
 Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナル操作ができるWebベースのリモートターミナルシステムです。Tailscaleなどのプライベートネットワーク越しに、ワンタイム共有リンク（QR）で安全に接続できます。
 
-## デモ・スクリーンショット
+### スクリーンショット
 
 <div align="center">
-  <img src="frontend/public/screenshot-main.png" alt="Main Screen" width="800">
-  <br>
-  <em>モバイルでも快適な操作が可能なターミナルUI</em>
+  <table>
+    <tr>
+      <td width="50%">
+        <img src="frontend/public/screenshot-main.png" alt="Aoi-Terminals メイン画面" width="100%">
+        <p align="center"><em>Androidスマホからターミナルにアクセスしている様子</em></p>
+      </td>
+      <td width="50%">
+        <img src="frontend/public/screenshot-terminal.png" alt="Aoi-Terminals ターミナル操作画面" width="100%">
+        <p align="center"><em>ターミナル操作とtmuxコントロールの様子</em></p>
+      </td>
+    </tr>
+  </table>
 </div>
 
 ### 主な機能
@@ -189,18 +198,32 @@ curl -L "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-syst
 ---
 あおいさん - [@takamiya1021](https://github.com/takamiya1021)
 
-<!-- Badge Definitions -->
-[Next-shield]: https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js&logoColor=white
+<!-- MARKDOWN LINKS & IMAGES -->
+[Next-shield]: https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js&logoColor=white
 [Next-url]: https://nextjs.org/
-[React-shield]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
+[React-shield]: https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black
 [React-url]: https://reactjs.org/
-[TypeScript-shield]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
+[TypeScript-shield]: https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white
 [TypeScript-url]: https://www.typescriptlang.org/
-[Node-shield]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
+[Node-shield]: https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white
 [Node-url]: https://nodejs.org/
-[Docker-shield]: https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white
+[Docker-shield]: https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white
 [Docker-url]: https://www.docker.com/
-[Actions-shield]: https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white
-[Actions-url]: https://github.com/features/actions
-[License-shield]: https://img.shields.io/github/license/takamiya1021/app045-aoi-terminal-system.svg?style=for-the-badge
-[License-url]: https://github.com/takamiya1021/app045-aoi-terminal-system/blob/main/LICENSE
+[Actions-shield]: https://img.shields.io/github/actions/workflow/status/takamiya1021/app045-aoi-terminal-system/publish-ghcr.yml?style=for-the-badge&logo=github-actions&logoColor=white
+[Actions-url]: https://github.com/takamiya1021/app045-aoi-terminal-system/actions
+[License-shield]: https://img.shields.io/badge/License-TBD-lightgrey?style=for-the-badge
+[License-url]: #ライセンス
+[Tailwind-shield]: https://img.shields.io/badge/Tailwind_CSS-3-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white
+[Tailwind-url]: https://tailwindcss.com/
+[xterm-shield]: https://img.shields.io/badge/xterm.js-5.5-000000?style=for-the-badge
+[xterm-url]: https://xtermjs.org/
+[PWA-shield]: https://img.shields.io/badge/PWA-Enabled-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white
+[PWA-url]: https://web.dev/progressive-web-apps/
+[Express-shield]: https://img.shields.io/badge/Express-5-000000?style=for-the-badge&logo=express&logoColor=white
+[Express-url]: https://expressjs.com/
+[WebSocket-shield]: https://img.shields.io/badge/WebSocket-Ready-010101?style=for-the-badge
+[WebSocket-url]: https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API
+[node-pty-shield]: https://img.shields.io/badge/node--pty-1.0-339933?style=for-the-badge
+[node-pty-url]: https://github.com/microsoft/node-pty
+[tmux-shield]: https://img.shields.io/badge/tmux-Integrated-1BB91F?style=for-the-badge
+[tmux-url]: https://github.com/tmux/tmux
