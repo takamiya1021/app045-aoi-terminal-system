@@ -2,10 +2,10 @@
 
 ## 1. 直感的なシステム配置図（ポンチ絵）
 
-### アーキテクチャ全体像とデータフロー（詳細版）
-お嬢お気に入りの、システムの配置とデータの流れをリッチに描いたバージョンやで。
+### アーキテクチャ全体像とデータフロー（画用紙風イラスト版）
+お嬢の仰った「GHCRから降ってきて、Windowsを通り、WSL内のUbuntuとEngineに分かれる」という大筋の流れを、温かみのあるイラストにしたで！
 
-![システムアーキテクチャ全体像とデータフロー](file:///home/ustar-wsl-2-2/.gemini/antigravity/brain/fd5f10b7-3317-424e-922b-57ca5f483f1d/full_system_architecture_with_docker_desktop_sketch_1766656725385.png)
+![システムアーキテクチャ全体像とデータフロー](file:///home/ustar-wsl-2-2/.gemini/antigravity/brain/fd5f10b7-3317-424e-922b-57ca5f483f1d/full_architecture_gayoshi_nested_jp_1766661451492.png)
 
 *   **GitHub / GHCR**: Windowsの外の外。ここから「設定ファイル」と「コンテナイメージ」のセットが降ってくる。
 *   **Windows OS**: PC全体の土台。
@@ -37,7 +37,7 @@ graph TB
     subgraph Windows ["Windows Host"]
         DDW["Docker Desktop for Windows"]
         
-        subgraph WSL ["WSL2 Subsystem"]
+        subgraph WSL ["WSL2 Subsystem (単一のVM・共有カーネル)"]
             subgraph Ubuntu ["Ubuntu Distro (User)"]
                 Control["~/.aoi-terminals/<br/>(CLI & .env)"]
                 Shell["bash / tmux"]
@@ -55,12 +55,16 @@ graph TB
 
     %% データフロー（インストール時）
     GHScripts -- "curl (ダウンロード)" --> Control
-    GHImages -- "docker pull" --> Engine
+    GHImages -- "docker pull" --> DDW
+    DDW -- "イメージ転送" --> Engine
     Engine -- "保存" --> Storage
+    
+    %% Ubuntu ⟷ Docker Engine の双方向通信
+    Control -- "docker コマンド<br/>(Docker Socket)" --> Engine
+    Engine -- "SSH (コンテナ→ホスト)" --> Shell
     
     %% 動作時の通信
     Browser -- "HTTPS" --> Engine
-    Engine -- "コンテナ実行" --> Shell
     DDW -- "管理・制御" --> Engine
 
     %% スタイル
@@ -71,6 +75,7 @@ graph TB
     style DockerEngine fill:#b3e5fc,stroke:#01579b
     style DockerData fill:#fff9c4,stroke:#fbc02d
 ```
+
 
 ### 各エリアの役割：
 
