@@ -80,6 +80,11 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
 
 1. **Docker**: [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/) または WSL上のDockerが動作していること
 2. **一般ユーザー**: `root` ではなく、標準の一般ユーザーで実行すること
+3. **SSHサーバー**: WSL環境では `openssh-server` が必要です
+   ```bash
+   sudo apt update && sudo apt install -y openssh-server
+   sudo service ssh start
+   ```
 
 ### WSL2環境での注意事項（Ubuntu 24.04以降）
 
