@@ -157,9 +157,18 @@ cmd_up() {
     CURRENT_USER=$(whoami)
     export SSH_TARGET="${CURRENT_USER}@${CURRENT_HOST_IP}"
 
+    # Tailscale IPをALLOWED_ORIGINSに動的追加（親シェルのdetected_ipを参照）
+    if [[ -n "${detected_ip:-}" ]]; then
+      tailscale_origin="http://${detected_ip}:${FRONTEND_PORT:-3101}"
+      if [[ "$ALLOWED_ORIGINS" != *"$tailscale_origin"* ]]; then
+        export ALLOWED_ORIGINS="${ALLOWED_ORIGINS},${tailscale_origin}"
+      fi
+    fi
+
     echo "[aoi-terminals] 📁 Base Directory: $BASE_DIR"
     echo "[aoi-terminals] 🌍 Dynamic Host IP: $HOST_IP"
     echo "[aoi-terminals] 🎯 SSH Target: $SSH_TARGET"
+    echo "[aoi-terminals] 🔐 CORS Allowed: $ALLOWED_ORIGINS"
     # ---------------------------------------------------------
 
     $COMPOSE_CMD up -d
