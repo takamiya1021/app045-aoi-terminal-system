@@ -58,54 +58,63 @@ usage() {
 }
 
 cmd_up() {
-  # 1. Port Forwarding (Tailscale/Local IP support)
+  # 1. Port Forwarding & IP Detection
+  local detected_ip=""
+  
+  # Try to detect Windows Tailscale IP (Best effort)
+  if command -v tailscale.exe >/dev/null 2>&1; then
+    detected_ip=$(tailscale.exe ip -4 2>/dev/null | tr -d '\r' | head -n 1 || true)
+  fi
+  
+  if [[ -z "$detected_ip" ]] && [[ -f "/mnt/c/Program Files/Tailscale/tailscale.exe" ]]; then
+    detected_ip=$("/mnt/c/Program Files/Tailscale/tailscale.exe" ip -4 2>/dev/null | tr -d '\r' | head -n 1 || true)
+  fi
+
+  # If we detected an IP, update the URL
+  if [[ -n "$detected_ip" ]]; then
+    # PUBLIC_BASE_URL is local, so we update it here for display
+    PUBLIC_BASE_URL="http://${detected_ip}:${FRONTEND_PORT}"
+    # Also export it so subprocesses (print-share-qr.sh) can use it
+    export TERMINAL_PUBLIC_BASE_URL="$PUBLIC_BASE_URL"
+    echo "[aoi-terminals]    (外部から接続するには、WindowsにTailscaleのインストールが必要じゃなぁ)"
+  fi
+
   if [[ "$PUBLIC_BASE_URL" != http://localhost:* ]] && [[ "$PUBLIC_BASE_URL" != http://127.0.0.1:* ]]; then
-    # WSLからWindows実行が無効だと port forwarding は設定できない
-    local wsl_ip=$(hostname -I | awk '{print $1}')
-    if [[ ! -e /proc/sys/fs/binfmt_misc/WSLInterop ]]; then
-      echo "[aoi-terminals] ⚠️ Windows実行(WSL interop)が無効のため、port forwarding を自動設定できへん。"
-      echo "[aoi-terminals] ▶ Windows (管理者PowerShell) で次を実行してな:"
-      local ps_script="$BASE_DIR/setup-port-forwarding.ps1"
-      if [[ -f "$ps_script" ]]; then
-        local win_script
-        win_script=$(wslpath -w "$ps_script")
-        echo "powershell -NoProfile -ExecutionPolicy Bypass -File \"${win_script}\" -WSL_IP ${wsl_ip}"
-      else
-        echo "(setup-port-forwarding.ps1 が見つからへん)"
+    # Try to configure port forwarding (Best effort)
+    echo "[aoi-terminals] 🔧 Configuring port forwarding..."
+    local ps_script="$BASE_DIR/setup-port-forwarding.ps1"
+    
+    if [[ -f "$ps_script" ]]; then
+      local win_script
+      # wslpath might fail if interop is broken, suppress error
+      win_script=$(wslpath -w "$ps_script" 2>/dev/null || echo "")
+      if [[ -z "$win_script" ]]; then
+         # Fallback for when wslpath fails but we can guess the path (e.g. \\wsl.localhost\Ubuntu...)
+         # For now, just warn if we can't find it
+         :
       fi
-      echo "[aoi-terminals] ℹ️ ついでに TERMINAL_PUBLIC_BASE_URL を Windows の Tailscale IP に合わせてな。"
-      echo "[aoi-terminals]    例: http://<WindowsのTailscale IP>:${FRONTEND_PORT}"
-    else
-      # Detect IP strictly using fixed logic
-      local ts_exe=""
-      if command -v tailscale.exe >/dev/null 2>&1; then
-        ts_exe="tailscale.exe"
-      elif [[ -f "/mnt/c/Program Files/Tailscale/tailscale.exe" ]]; then
-        ts_exe="/mnt/c/Program Files/Tailscale/tailscale.exe"
-      elif command -v tailscale >/dev/null 2>&1; then
-        ts_exe="tailscale"
-      fi
-
-      if [[ -n "$ts_exe" ]]; then
-        local ts_ip="$("$ts_exe" ip -4 2>/dev/null | tr -d '\r' | head -n 1 || true)"
-        if [[ -n "$ts_ip" ]]; then
-           # Update URL if IP changed
-           PUBLIC_BASE_URL="http://${ts_ip}:${FRONTEND_PORT}"
-        fi
-      fi
-
-      echo "[aoi-terminals] 🔧 Configuring port forwarding..."
-      local ps_script="$BASE_DIR/setup-port-forwarding.ps1"
-      if [[ -f "$ps_script" ]]; then
-        local win_script=$(wslpath -w "$ps_script")
+      
+      if [[ -n "$win_script" ]]; then
         local ps_exe="powershell.exe"
         if ! command -v powershell.exe >/dev/null 2>&1; then
-          for p in "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe" "/mnt/c/Windows/Sysnative/WindowsPowerShell/v1.0/powershell.exe"; do
-            if [[ -x "$p" ]]; then ps_exe="$p"; break; fi
-          done
+           # Search common paths
+           for p in "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe" "/mnt/c/Windows/Sysnative/WindowsPowerShell/v1.0/powershell.exe"; do
+             if [[ -x "$p" ]]; then ps_exe="$p"; break; fi
+           done
         fi
-        "$ps_exe" -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \"$win_script\" -WSL_IP $wsl_ip' -Wait" < /dev/null || true
+        
+        # Execute PowerShell script
+        if "$ps_exe" -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \"$win_script\" -WSL_IP $wsl_ip' -Wait" < /dev/null >/dev/null 2>&1; then
+           : # Success
+        else
+           # If failure (e.g. Interop broken), warn but don't exit
+           echo "[aoi-terminals] ⚠️  Windows連携(Port Forward)の自動設定に失敗しました。"
+           echo "[aoi-terminals]    (WSL Interopが無効、または管理者権限がありません)"
+           echo "[aoi-terminals]    ※接続に問題がある場合は 'windows-run.bat' から起動してみてください。"
+        fi
       fi
+    else
+      echo "(setup-port-forwarding.ps1 が見つからへん)"
     fi
   fi
 

@@ -37,21 +37,24 @@ fi
 BASE_URL="${TERMINAL_PUBLIC_BASE_URL:-}"
 if [[ -z "$BASE_URL" ]]; then
   # 以前のロジックでベストエフォートに取得
-  # Tailscale優先: Windows側の tailscale.exe または Linux側の tailscale を探す
-  ts_exe=""
+  ts_ip=""
+  
+  # 1. Try Windows Tailscale first
   if command -v tailscale.exe >/dev/null 2>&1; then
-    ts_exe="tailscale.exe"
-  elif [[ -f "/mnt/c/Program Files/Tailscale/tailscale.exe" ]]; then
-    ts_exe="/mnt/c/Program Files/Tailscale/tailscale.exe"
-  elif command -v tailscale >/dev/null 2>&1; then
-    ts_exe="tailscale"
+    ts_ip=$(tailscale.exe ip -4 2>/dev/null | tr -d '\r' | head -n 1 || true)
+  fi
+  
+  if [[ -z "$ts_ip" ]] && [[ -f "/mnt/c/Program Files/Tailscale/tailscale.exe" ]]; then
+    ts_ip=$("/mnt/c/Program Files/Tailscale/tailscale.exe" ip -4 2>/dev/null | tr -d '\r' | head -n 1 || true)
   fi
 
-  if [[ -n "$ts_exe" ]]; then
-    ts_ip="$("$ts_exe" ip -4 2>/dev/null | tr -d '\r' | head -n 1 || true)"
-    if [[ -n "$ts_ip" ]]; then
-      BASE_URL="http://${ts_ip}:${FRONTEND_PORT}"
-    fi
+
+
+  if [[ -n "$ts_ip" ]]; then
+    BASE_URL="http://${ts_ip}:${FRONTEND_PORT}"
+  else
+    echo "[share-qr] ℹ️ Windows側でTailscaleのIPが取得できませんでした。" >&2
+    echo "[share-qr]    (外部から接続するには、WindowsにTailscaleをインストールすることをお勧めします)" >&2
   fi
   
   if [[ -z "$BASE_URL" ]]; then

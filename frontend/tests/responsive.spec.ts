@@ -6,7 +6,12 @@ test('should have a responsive layout on mobile', async ({ page }) => {
   await page.goto('/');
 
   // 1. ヘッダーのタイトルが表示されているか
-  await expect(page.locator('header h1')).toHaveText('Improved Terminal');
+  await expect(page.locator('header h1')).toHaveText('Aoi-Terminals');
+
+  // Login
+  await page.getByTestId('auth-token-input').fill('valid_token');
+  await page.getByTestId('auth-submit').click({ force: true });
+
 
   // 2. ターミナルが表示されているか
   await expect(page.locator('[data-testid="terminal-container"]')).toBeVisible();

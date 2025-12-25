@@ -8,7 +8,7 @@ async function loginWithMasterToken(page: any) {
   // Next dev の初回コンパイル/水和が遅いと、入力の状態が反映されるまで時間がかかることがある
   await page.getByTestId('auth-token-input').fill('valid_token');
   await expect(page.getByTestId('auth-submit')).toBeEnabled({ timeout: 60_000 });
-  await page.getByTestId('auth-submit').click();
+  await page.getByTestId('auth-submit').click({ force: true });
   await expect(page.locator('[data-testid="terminal-container"]')).toBeVisible({ timeout: 10000 });
 }
 

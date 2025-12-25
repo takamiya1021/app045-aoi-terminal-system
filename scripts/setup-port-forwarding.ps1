@@ -32,9 +32,66 @@ foreach ($port in $ports) {
     }
 }
 
-Write-Host ""
-Write-Host "Current port forwarding configuration:" -ForegroundColor Cyan
-netsh interface portproxy show all
+
+# ------------------------------------------------------------------
+# Tailscale IP Detection & .env Update
+# ------------------------------------------------------------------
+
+Write-Host "🔍 Detecting Windows Tailscale IP..." -ForegroundColor Cyan
+
+$ts_ip = ""
+if (Get-Command "tailscale.exe" -ErrorAction SilentlyContinue) {
+    try {
+        $ts_ip = (tailscale.exe ip -4 | Select-Object -First 1).Trim()
+    } catch {}
+} elseif (Test-Path "C:\Program Files\Tailscale\tailscale.exe") {
+    try {
+        $ts_ip = (& "C:\Program Files\Tailscale\tailscale.exe" ip -4 | Select-Object -First 1).Trim()
+    } catch {}
+}
+
+if (-not [string]::IsNullOrWhiteSpace($ts_ip)) {
+    Write-Host "  ✅ Found Tailscale IP: $ts_ip" -ForegroundColor Green
+
+    # WSLパス (.env) の特定
+    # このスクリプトは \\wsl.localhost\Ubuntu\... にあるはずなので、そこから .env を探す
+    $scriptPath = $PSScriptRoot
+    $envPath = Join-Path $scriptPath ".env"
+    
+    # フォールバック: 親ディレクトリ (scripts/../.env)
+    if (-not (Test-Path $envPath)) {
+        $envPath = Join-Path (Split-Path $scriptPath -Parent) ".env"
+    }
+
+    if (Test-Path $envPath) {
+        Write-Host "  📝 Updating .env file at: $envPath" -ForegroundColor Cyan
+        
+        $envContent = Get-Content $envPath
+        $newLine = "TERMINAL_PUBLIC_BASE_URL=`"http://${ts_ip}:3101`""
+        
+        $found = $false
+        $newContent = @()
+        foreach ($line in $envContent) {
+            if ($line -match "^TERMINAL_PUBLIC_BASE_URL=") {
+                $newContent += $newLine
+                $found = $true
+            } else {
+                $newContent += $line
+            }
+        }
+        
+        if (-not $found) {
+            $newContent += $newLine
+        }
+        
+        Set-Content -Path $envPath -Value $newContent -Encoding UTF8
+        Write-Host "  ✅ TERMINAL_PUBLIC_BASE_URL updated successfully!" -ForegroundColor Green
+    } else {
+        Write-Host "  ⚠️  .env file not found. Could not update settings." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  ⚠️  Tailscale IP not found (Tailscale not installed or not running?)" -ForegroundColor Yellow
+}
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan

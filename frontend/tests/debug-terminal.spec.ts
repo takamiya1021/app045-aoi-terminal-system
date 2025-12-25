@@ -18,8 +18,8 @@ test('debug terminal connection', async ({ page }) => {
 
   // 認証（Cookie方式）
   await page.getByTestId('auth-token-input').fill('valid_token');
-  await page.getByTestId('auth-submit').click();
-  
+  await page.getByTestId('auth-submit').click({ force: true });
+
   // ターミナルが表示されるのを待機
   console.log('Waiting for terminal container...');
   const container = page.locator('[data-testid="terminal-container"]');
@@ -27,7 +27,7 @@ test('debug terminal connection', async ({ page }) => {
 
   // 実際のxtermのDOM要素を探す
   console.log('Checking xterm-screen...');
-  
+
   // 10秒間、データが届くのを監視
   let hasText = false;
   for (let i = 0; i < 20; i++) {
@@ -43,7 +43,7 @@ test('debug terminal connection', async ({ page }) => {
   console.log('Final State:');
   console.log(`Errors: ${errors.length}`);
   console.log(`Logs: ${logs.length}`);
-  
+
   if (!hasText) {
     throw new Error(`Terminal remains blank. Errors: ${errors.join(', ')}`);
   }

@@ -311,6 +311,10 @@ chmod +x "$BASE_DIR/print-share-qr.sh"
 curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/production-cli.sh" > "$BASE_DIR/aoi-terminals"
 chmod +x "$BASE_DIR/aoi-terminals"
 
+# Windows用ランチャー (windows-run.bat)
+curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/windows-run.bat" > "$BASE_DIR/windows-run.bat"
+
+
 # 6. セットアップ完了と起動
 # ---------------------------------------------------------
 echo "---"

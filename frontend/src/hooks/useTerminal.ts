@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { Unicode11Addon } from '@xterm/addon-unicode11';
 import '@xterm/xterm/css/xterm.css';
 
 interface UseTerminalOptions {
@@ -59,10 +60,16 @@ export const useTerminal = (options?: UseTerminalOptions): UseTerminalReturn => 
           brightCyan: '#56B6C2',
           brightWhite: '#FFFFFF',
         },
+        allowProposedApi: true,
       });
 
       const fitAddon = new FitAddon();
+      const unicode11Addon = new Unicode11Addon();
+
       terminal.loadAddon(fitAddon);
+      terminal.loadAddon(unicode11Addon);
+
+      terminal.unicode.activeVersion = '11';
 
       terminal.open(terminalContainer); // Use terminalContainer here
       fitAddon.fit();

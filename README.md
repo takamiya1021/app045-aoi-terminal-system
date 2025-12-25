@@ -79,8 +79,8 @@ curl -L "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-syst
 
 インストール完了後は、専用のCLIツール `aoi-terminals` が使用可能になります。
 
-1. **システムの起動**: ターミナルで `aoi-terminals start` を実行。コンテナが立ち上がり、QRコードが表示されます。
-2. **情報の確認**: `aoi-terminals info` で現在のログインURL（トークン付き）を確認できます。
+1. **システムの起動**: ターミナルで `~/.aoi-terminals/aoi-terminals start` を実行。コンテナが立ち上がり、QRコードが表示されます。
+2. **情報の確認**: `~/.aoi-terminals/aoi-terminals info` で現在のログインURL（トークン付き）を確認できます。
 3. **モバイル接続**: 表示されたQRをスマホで読み取れば、24時間有効なセッションが開始されます。
 4. **ホスト連携**: プロンプトが `ustar-wsl-2-2@STAR` のように表示され、WSLホストを直接操作できます。
 5. **システムの停止**: `aoi-terminals stop` で全コンテナを安全に停止します。

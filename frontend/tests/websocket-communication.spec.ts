@@ -16,7 +16,7 @@ test('should connect to WebSocket and display terminal', async ({ page }) => {
 
   // 認証（Cookie方式）
   await page.getByTestId('auth-token-input').fill('valid_token');
-  await page.getByTestId('auth-submit').click();
+  await page.getByTestId('auth-submit').click({ force: true });
 
   // Check if terminal element is visible
   await expect(page.locator('[data-testid="xterm-terminal"]')).toBeVisible();

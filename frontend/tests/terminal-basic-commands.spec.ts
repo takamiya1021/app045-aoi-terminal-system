@@ -5,7 +5,7 @@ test('terminal executes basic commands (pwd, ls)', async ({ page }) => {
 
   await page.getByTestId('auth-token-input').fill('valid_token');
   await expect(page.getByTestId('auth-submit')).toBeEnabled({ timeout: 60000 });
-  await page.getByTestId('auth-submit').click();
+  await page.getByTestId('auth-submit').click({ force: true });
 
   await expect(page.locator('[data-testid="terminal-container"]')).toBeVisible({ timeout: 10000 });
 

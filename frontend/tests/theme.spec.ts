@@ -1,7 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 test('theme colors should be applied correctly', async ({ page }) => {
-  await page.goto('/'); // Base URL is now http://localhost:3101 in config
+  await page.goto('/');
+
+  // Login
+  await page.getByTestId('auth-token-input').fill('valid_token');
+  await page.getByTestId('auth-submit').click({ force: true });
+
 
   // bodyの背景色を確認 (Slate-900: #111827 -> rgb(17, 24, 39))
   const body = page.locator('body');
