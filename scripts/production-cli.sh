@@ -70,6 +70,16 @@ usage() {
 }
 
 cmd_up() {
+  # 0. SSH Server Check
+  if ! ss -tlnp 2>/dev/null | grep -q ':22 '; then
+    echo "[aoi-terminals] ❌ SSHサーバーが起動していません。"
+    echo "[aoi-terminals]    以下のコマンドで起動してください："
+    echo ""
+    echo "    sudo service ssh start"
+    echo ""
+    exit 1
+  fi
+
   # 1. Port Forwarding & IP Detection
   local detected_ip=""
   local wsl_ip=$(hostname -I | awk '{print $1}')
