@@ -15,9 +15,11 @@ extract_json_string() {
   sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -n 1
 }
 
+TOKEN_SOURCE="environment"
 if [[ -z "${TERMINAL_TOKEN:-}" ]]; then
   # .env があればそこから読み込む（Docker環境用）
   ENV_FILE="$(dirname "$0")/.env"
+  TOKEN_SOURCE=".env ($ENV_FILE)"
   if [[ -f "$ENV_FILE" ]]; then
     TERMINAL_TOKEN="$(grep -E "^TERMINAL_TOKEN=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- | tr -d '\"' || true)"
     TERMINAL_PUBLIC_BASE_URL="$(grep -E "^TERMINAL_PUBLIC_BASE_URL=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- | tr -d '\"' || true)"
@@ -121,4 +123,10 @@ else
   echo "[share-qr] DEBUG: Response: $auth_body"
   echo "[share-qr] DEBUG: Backend URL: ${BACKEND_HTTP}/auth"
   echo "[share-qr] DEBUG: Origin Header: ${ORIGIN_HEADER}"
+  # トークンのデバッグ情報（セキュリティのため一部マスク）
+  token_len=${#TERMINAL_TOKEN}
+  token_preview="${TERMINAL_TOKEN:0:8}...${TERMINAL_TOKEN: -4}"
+  echo "[share-qr] DEBUG: Token length: $token_len"
+  echo "[share-qr] DEBUG: Token preview: $token_preview"
+  echo "[share-qr] DEBUG: Token source: $TOKEN_SOURCE"
 fi
