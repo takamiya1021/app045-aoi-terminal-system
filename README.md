@@ -288,6 +288,12 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-ter
 
 **対処方法**: Enterキーを2回押すことでコマンドが実行されます（1回目でカーソル位置が正常に戻り、2回目で実行）。
 
+### WSL再起動後にdockerコマンドが見つからない
+
+WSLを再起動（`wsl --shutdown`など）した後、`docker`コマンドが見つからないエラーが発生することがあります。これはDocker DesktopとWSLの統合が一時的に切断されるためです。
+
+**対処方法**: Docker Desktop を再起動してください（タスクトレイのDockerアイコン → Restart）。
+
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 
 ---

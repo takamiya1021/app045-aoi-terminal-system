@@ -176,7 +176,26 @@ cmd_up() {
 
   echo "✅ System is online!"
   cmd_info
-  cmd_qr
+
+  # バックエンドの起動を待ってからQRコードを生成
+  echo "[aoi-terminals] ⏳ Waiting for backend to be ready..."
+  local backend_url="http://127.0.0.1:${BACKEND_PORT:-3102}/session"
+  local max_attempts=30
+  local attempt=0
+  while [[ $attempt -lt $max_attempts ]]; do
+    if curl -fsS "$backend_url" >/dev/null 2>&1; then
+      break
+    fi
+    attempt=$((attempt + 1))
+    sleep 1
+  done
+
+  if [[ $attempt -ge $max_attempts ]]; then
+    echo "[aoi-terminals] ⚠️  Backend is taking longer than expected to start."
+    echo "[aoi-terminals]    Try running 'aoi-terminals qr' later to generate QR code."
+  else
+    cmd_qr
+  fi
 
   # SSH Server Check (warning only, don't exit)
   if ! ss -tlnp 2>/dev/null | grep -q ':22 '; then
