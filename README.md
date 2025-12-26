@@ -154,9 +154,9 @@ sudo systemctl stop ssh.socket ssh.service  # SSHを停止
 
 一般ユーザーの方や、安定して運用したい方向けの設定です。Dockerを使用します。
 
-### 1. インストール（GHCR・推奨）
+### 1. インストール / アップデート
 
-ビルド不要で、1コマンドで全自動セットアップ。起動するたびに最新版を自動取得するので、アップデートの心配は不要です。
+インストールもアップデートも、このコマンドだけでOKです。
 
 ```bash
 curl -L "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/install-docker.sh?v=$(date +%s)" | bash
