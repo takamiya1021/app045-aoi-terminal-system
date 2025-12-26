@@ -188,9 +188,16 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-ter
 ```
 
 削除されるもの：
-- Dockerコンテナ
+- Dockerコンテナ（frontend/backend）→ サーバーも自動停止
 - 設定ディレクトリ (`~/.aoi-terminals`)
 - SSH authorized_keys から aoi-terminals-bridge 鍵
+- Dockerイメージ（確認後オプション）
+
+> [!NOTE]
+> SSHサーバーは自動停止されません。不要な場合は手動で停止してください：
+> ```bash
+> sudo service ssh stop
+> ```
 
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 
