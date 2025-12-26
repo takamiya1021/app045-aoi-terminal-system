@@ -82,7 +82,12 @@ cookie_jar="$(mktemp)"
 cleanup() { rm -f "$cookie_jar"; }
 trap cleanup EXIT
 
-if curl -fsS -c "$cookie_jar" -H "Origin: ${ORIGIN_HEADER}" -H 'Content-Type: application/json' -d "{\"token\":\"${TERMINAL_TOKEN}\"}" "${BACKEND_HTTP}/auth" >/dev/null 2>&1; then
+# デバッグ: 認証リクエストの詳細
+auth_response=$(curl -sS -w "\n%{http_code}" -c "$cookie_jar" -H "Origin: ${ORIGIN_HEADER}" -H 'Content-Type: application/json' -d "{\"token\":\"${TERMINAL_TOKEN}\"}" "${BACKEND_HTTP}/auth" 2>&1)
+auth_http_code=$(echo "$auth_response" | tail -n1)
+auth_body=$(echo "$auth_response" | sed '$d')
+
+if [[ "$auth_http_code" == "200" ]]; then
   json="$(curl -fsS -b "$cookie_jar" -H "Origin: ${ORIGIN_HEADER}" -X POST "${BACKEND_HTTP}/link-token" 2>/dev/null || true)"
   one_time_token="$(printf "%s" "$json" | extract_json_string "token" || true)"
 
@@ -112,4 +117,8 @@ if curl -fsS -c "$cookie_jar" -H "Origin: ${ORIGIN_HEADER}" -H 'Content-Type: ap
   fi
 else
   echo "[share-qr] 認証に失敗しました。"
+  echo "[share-qr] DEBUG: HTTP Status: $auth_http_code"
+  echo "[share-qr] DEBUG: Response: $auth_body"
+  echo "[share-qr] DEBUG: Backend URL: ${BACKEND_HTTP}/auth"
+  echo "[share-qr] DEBUG: Origin Header: ${ORIGIN_HEADER}"
 fi
