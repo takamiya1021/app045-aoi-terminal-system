@@ -51,8 +51,8 @@ echo "[aoi-terminals] 🔍 Checking WSL Interop..."
 if [[ ! -f /proc/sys/fs/binfmt_misc/WSLInterop ]]; then
   echo "[aoi-terminals] ⚠️  WSL Interop is disabled. Enabling..."
 
-  # systemd の有無で処理を分岐
-  if systemctl --version &>/dev/null; then
+  # systemd の有無で処理を分岐（PID 1がsystemdかどうかで判定）
+  if [[ "$(cat /proc/1/comm 2>/dev/null)" == "systemd" ]]; then
     # systemd 環境：永続設定（再起動後も有効）
     echo "[aoi-terminals] 📝 Detected systemd environment. Applying persistent configuration..."
     if sudo mkdir -p /etc/binfmt.d && \
