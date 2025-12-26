@@ -252,13 +252,13 @@ SSH_KEY="$BASE_DIR/.ssh/id_rsa"
 SSH_PUB="${SSH_KEY}.pub"
 if [[ ! -f "$SSH_KEY" ]]; then
   echo "🔑 Generating SSH key..."
-  ssh-keygen -t rsa -b 4096 -f "$SSH_KEY" -N "" -C "aoi-terminals-bridge"
+  ssh-keygen -t rsa -b 4096 -f "$SSH_KEY" -N "" -C "aoi-terminals-bridge" </dev/null
 else
   echo "🔑 Using existing SSH key: $SSH_KEY"
 fi
 if [[ ! -f "$SSH_PUB" ]]; then
   echo "🔑 Regenerating public key from private key..."
-  ssh-keygen -y -f "$SSH_KEY" > "$SSH_PUB"
+  ssh-keygen -y -f "$SSH_KEY" </dev/null > "$SSH_PUB"
 fi
 # コンテナ内のnodeユーザー(UID 1000)がホストユーザー(UID可変)の鍵を読めるよう644に設定
 # この鍵はaoi-terminalsブリッジ専用で、Dockerボリューム経由でのみ使用される
