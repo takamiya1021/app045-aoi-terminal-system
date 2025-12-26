@@ -144,7 +144,7 @@ detect_public_base_url() {
   if [[ -n "$ts_exe" ]]; then
     local ts_ip=""
     # Windows側のTailscaleが応答しない場合があるのでタイムアウト(2秒)を設定
-    ts_ip="$(timeout 2s "$ts_exe" ip -4 2>/dev/null | tr -d '\r' | head -n 1 || true)"
+    ts_ip="$(timeout 2s "$ts_exe" ip -4 </dev/null 2>/dev/null | tr -d '\r' | head -n 1 || true)"
     if [[ -n "$ts_ip" ]]; then
       printf "http://%s:%s" "$ts_ip" "$port"
       return 0
