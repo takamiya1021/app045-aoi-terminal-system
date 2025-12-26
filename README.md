@@ -12,7 +12,7 @@
 [![GitHub Actions][Actions-shield]][Actions-url]
 [![License][License-shield]][License-url]
 
-[デモを見る](#デモ) · [バグ報告](https://github.com/takamiya1021/app045-aoi-terminal-system/issues) · [機能リクエスト](https://github.com/takamiya1021/app045-aoi-terminal-system/issues)
+[バグ報告](https://github.com/takamiya1021/app045-aoi-terminal-system/issues) · [機能リクエスト](https://github.com/takamiya1021/app045-aoi-terminal-system/issues)
 
 </div>
 
@@ -78,9 +78,10 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
 
 ### 必須要件
 
-1. **Docker**: [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/) または WSL上のDockerが動作していること
-2. **一般ユーザー**: `root` ではなく、標準の一般ユーザーで実行すること
-3. **SSHサーバー**: WSL環境では `openssh-server` が必要です
+1. **WSL2 + Ubuntu 24.04以降**: 本システムはWSL2上のUbuntu 24.04以降（systemd環境）を前提としています
+2. **Docker**: [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/) または WSL上のDockerが動作していること
+3. **一般ユーザー**: `root` ではなく、標準の一般ユーザーで実行すること
+4. **SSHサーバー**: WSL環境では `openssh-server` が必要です
    ```bash
    sudo apt update && sudo apt install -y openssh-server
    sudo service ssh start
@@ -290,8 +291,8 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-ter
 [Docker-url]: https://www.docker.com/
 [Actions-shield]: https://img.shields.io/github/actions/workflow/status/takamiya1021/app045-aoi-terminal-system/publish-ghcr.yml?style=for-the-badge&logo=github-actions&logoColor=white
 [Actions-url]: https://github.com/takamiya1021/app045-aoi-terminal-system/actions
-[License-shield]: https://img.shields.io/badge/License-TBD-lightgrey?style=for-the-badge
-[License-url]: #ライセンス
+[License-shield]: https://img.shields.io/badge/License-MIT-green?style=for-the-badge
+[License-url]: https://github.com/takamiya1021/app045-aoi-terminal-system/blob/main/LICENSE
 [Tailwind-shield]: https://img.shields.io/badge/Tailwind_CSS-3-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white
 [Tailwind-url]: https://tailwindcss.com/
 [xterm-shield]: https://img.shields.io/badge/xterm.js-5.5-000000?style=for-the-badge
