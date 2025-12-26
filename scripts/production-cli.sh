@@ -183,7 +183,8 @@ cmd_up() {
   local max_attempts=30
   local attempt=0
   while [[ $attempt -lt $max_attempts ]]; do
-    if curl -fsS "$backend_url" >/dev/null 2>&1; then
+    # -f を外して、接続できればOK（401等でも起動済みと判定）
+    if curl -sS --max-time 2 "$backend_url" >/dev/null 2>&1; then
       break
     fi
     attempt=$((attempt + 1))
