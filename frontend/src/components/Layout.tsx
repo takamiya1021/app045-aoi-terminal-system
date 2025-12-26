@@ -105,9 +105,9 @@ const Layout: React.FC<LayoutProps> = ({ children, headerRight }) => {
       style={viewportHeight ? { height: `${viewportHeight}px` } : undefined}
     >
       <OfflineIndicator />
-      <header className="flex-none p-4 bg-gray-800 border-b border-gray-700 flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-orange-400">Aoi-Terminals</h1>
-        {headerRight ? <div className="flex items-center gap-2">{headerRight}</div> : null}
+      <header className="flex-none p-4 bg-gray-800 border-b border-gray-700 flex flex-nowrap items-center justify-between gap-3 min-w-0">
+        <h1 className="text-xl font-bold text-orange-400 whitespace-nowrap flex-shrink-0">Aoi-Terminals</h1>
+        {headerRight ? <div className="flex items-center gap-2 flex-shrink-0">{headerRight}</div> : null}
       </header>
 
       <main className="flex-grow overflow-hidden relative">

@@ -470,29 +470,29 @@ export default function Home() {
     <Layout
       headerRight={
         isAuthenticated ? (
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-nowrap">
             <button
               onClick={() => window.open(window.location.origin, '_blank')}
-              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-md shadow flex items-center gap-1"
+              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-md shadow flex items-center gap-1 whitespace-nowrap"
               title="New Building (Open in New Tab)"
             >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
               </svg>
               <span>Building</span>
             </button>
             <button
               onClick={toggleFullscreen}
-              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-md shadow"
+              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-md shadow whitespace-nowrap"
               title="Toggle Fullscreen"
             >
-              [ ]
+              [全画面]
             </button>
             <button
               onClick={() => setIsShareOpen(true)}
-              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-md shadow"
+              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-md shadow whitespace-nowrap"
             >
-              Share (QR)
+              Share(QR)
             </button>
           </div>
         ) : null

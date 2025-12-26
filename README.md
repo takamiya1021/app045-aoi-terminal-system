@@ -131,13 +131,19 @@ notepad.exe
 **症状**：
 - SSHサーバーが起動できない（`Address already in use`）
 - aoi-terminalsの起動時にポートエラー
+- 認証エラー（`Invalid token`）が発生する
+
+**Docker環境と開発環境の違い**：
+- **Docker環境（本番）**：Docker DesktopはWindows側で動作するため、どのWSLからでも**同じコンテナを共有**できます。複数のWSLで本番環境を使う場合は問題ありません。
+- **開発環境**：各WSLでローカルのNode.jsが直接ポートをリッスンするため、**共有されません**。あるWSLで開発環境を起動していると、他のWSLからは同じポートにアクセスできず、競合が発生します。
 
 **対策**：
 aoi-terminalsを使用するディストリビューション以外では、該当サービスを停止してください：
 ```bash
 # 他のディストリビューションで実行
 sudo systemctl stop ssh.socket ssh.service  # SSHを停止
-~/.aoi-terminals/aoi-terminals stop          # aoi-terminalsを停止
+~/.aoi-terminals/aoi-terminals stop          # 本番環境を停止
+./scripts/stop.sh                            # 開発環境を停止
 ```
 
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
