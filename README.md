@@ -34,6 +34,7 @@
 - [詳細仕様](#詳細仕様)
   - [認証・セッション](#認証セッション)
   - [環境設定](#環境設定)
+- [既知の制限](#既知の制限)
 - [謝辞](#謝辞)
 
 ---
@@ -57,6 +58,13 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
       </td>
     </tr>
   </table>
+</div>
+
+### システム全体像
+
+<div align="center">
+  <img src="png/full-architecture-cute.png" alt="システム全体像" width="500">
+  <p><em>GitHub・Docker Desktop・WSL・Ubuntuの連携イメージ</em></p>
 </div>
 
 ### 主な機能
@@ -153,10 +161,11 @@ curl -L "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-syst
 > **更新方法**: 最新版に更新したい場合は、同じコマンドを再実行するだけでOKです。
 
 ### 2. 使い方・運用手順
-> [!NOTE]
-> Windowsの方は、インストール直後に開かれるフォルダ内の `windows-run.bat` をダブルクリックするだけで起動できます。
 
-インストール完了後は、専用のCLIツール `aoi-terminals` が使用可能になります。
+<div align="center">
+  <img src="png/usage-flow-gayoshi.png" alt="かんたんVPNガイド" width="500">
+  <p><em>QRコードをスマホでスキャンするだけで接続完了！</em></p>
+</div>
 
 #### 起動と停止
 - **`start`** (`up`): システムを起動し、ログイン用QRコードを表示します。
@@ -168,14 +177,16 @@ curl -L "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-syst
   ~/.aoi-terminals/aoi-terminals stop
   ```
 
+#### QRコード再発行
+QRコードは5分で期限切れ＆ワンタイムです。再ログインや別端末で接続したい時は再発行してください。
+```bash
+~/.aoi-terminals/aoi-terminals qr
+```
+
 #### 状態確認とメンテナンス
 - **`info`**: 現在のシステム設定（ログインURL、マスターキー、インストール先）を表示します。
   ```bash
   ~/.aoi-terminals/aoi-terminals info
-  ```
-- **`qr`**: ログイン用QRコード（5分間有効）を再発行して表示します。
-  ```bash
-  ~/.aoi-terminals/aoi-terminals qr
   ```
 - **`logs`**: コンテナの実行ログを流し見します（終了は `Ctrl+C`）。
   ```bash
@@ -264,6 +275,18 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-ter
 | `TERMINAL_TOKEN` | ログイン用トークン | 自動生成 |
 | `ALLOWED_ORIGINS` | 許可するOrigin | `http://localhost:3101` |
 | `TERMINAL_SSH_TARGET` | ブリッジ先ホスト | (Docker時必須) |
+
+<p align="right">(<a href="#目次">トップへ戻る</a>)</p>
+
+---
+
+## 既知の制限
+
+### モバイルでのIME入力
+
+モバイル端末でIME（日本語入力など）を使用する場合、入力開始時にカーソルが先頭位置に移動することがあります。これはxterm.jsライブラリの制約によるものです。
+
+**対処方法**: Enterキーを2回押すことでコマンドが実行されます（1回目でカーソル位置が正常に戻り、2回目で実行）。
 
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 

@@ -121,6 +121,7 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ onData, onResize,
       console.log('Initializing xterm.js...');
       const terminal = new Terminal({
         cursorBlink: true,
+        cursorStyle: 'block', // モバイルでもブロックカーソルを強制
         theme: { background: '#0F172A', foreground: '#F3F4F6' },
         convertEol: true,
         scrollback: 5000,
@@ -196,11 +197,18 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ onData, onResize,
     };
   }, []);
 
+  // モバイルでユーザージェスチャー（タッチ/クリック）時にフォーカスを当てる
+  const handleFocus = () => {
+    xtermInstance.current?.focus();
+  };
+
   return (
     <div
       ref={terminalRef}
       className="w-full h-full min-h-[300px]"
       data-testid="xterm-terminal"
+      onClick={handleFocus}
+      onTouchStart={handleFocus}
       onCompositionStart={() => {
         // IME: xterm内部のtextareaからcompositionイベントがbubbleすることがある
         isComposingRef.current = true;
