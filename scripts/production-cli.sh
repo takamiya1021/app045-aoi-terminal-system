@@ -171,6 +171,10 @@ cmd_up() {
     echo "[aoi-terminals] 🔐 CORS Allowed: $ALLOWED_ORIGINS"
     # ---------------------------------------------------------
 
+    # 最新のDockerイメージを取得
+    echo "[aoi-terminals] 📥 Pulling latest images..."
+    $COMPOSE_CMD pull --quiet
+
     $COMPOSE_CMD up -d
   )
 
