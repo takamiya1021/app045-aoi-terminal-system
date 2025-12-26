@@ -154,17 +154,13 @@ sudo systemctl stop ssh.socket ssh.service  # SSHを停止
 
 一般ユーザーの方や、安定して運用したい方向けの設定です。Dockerを使用します。
 
-### 1. 最短起動（GHCR・推奨）
+### 1. インストール（GHCR・推奨）
 
-ビルド不要で、1コマンドで全自動セットアップし、起動用CLIをご利用の環境へ導入します。
+ビルド不要で、1コマンドで全自動セットアップ。起動するたびに最新版を自動取得するので、アップデートの心配は不要です。
 
 ```bash
-# インストーラーを実行 (インストールのみ完了します)
 curl -L "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/install-docker.sh?v=$(date +%s)" | bash
 ```
-
-> [!TIP]
-> **更新方法**: 最新版に更新したい場合は、同じコマンドを再実行するだけでOKです。
 
 ### 2. 使い方・運用手順
 
@@ -178,8 +174,6 @@ curl -L "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-syst
   ```bash
   ~/.aoi-terminals/aoi-terminals start
   ```
-  > [!NOTE]
-  > 起動時に**最新のDockerイメージを自動取得**します。新しいバージョンがリリースされていれば、自動的にアップデートされます。
 - **`stop`** (`down`): 全てのシステム（コンテナ）を停止します。
   ```bash
   ~/.aoi-terminals/aoi-terminals stop
