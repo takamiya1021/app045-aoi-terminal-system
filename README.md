@@ -178,6 +178,8 @@ curl -L "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-syst
   ```bash
   ~/.aoi-terminals/aoi-terminals start
   ```
+  > [!NOTE]
+  > 起動時に**最新のDockerイメージを自動取得**します。新しいバージョンがリリースされていれば、自動的にアップデートされます。
 - **`stop`** (`down`): 全てのシステム（コンテナ）を停止します。
   ```bash
   ~/.aoi-terminals/aoi-terminals stop
