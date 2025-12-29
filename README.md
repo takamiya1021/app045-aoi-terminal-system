@@ -20,6 +20,7 @@
 
 ## 📑 目次
 
+- [⚠️ 重要事項](#️-重要事項)
 - [概要](#概要)
   - [主な機能](#主な機能)
 - [📋 共通の前提条件](#-共通の前提条件)
@@ -35,7 +36,18 @@
   - [認証・セッション](#認証セッション)
   - [環境設定](#環境設定)
 - [既知の制限](#既知の制限)
+- [🔧 トラブルシューティング](#-トラブルシューティング)
 - [謝辞](#謝辞)
+
+---
+
+## ⚠️ 重要事項
+
+本ドキュメントを読む前に、以下の点にご注意ください。
+
+- **コマンドの実行場所**: 特別な断りがない限り、本ドキュメントに記載されているコマンドは**対象のWSLディストリビューションのターミナル**から実行してください。Windowsのコマンドプロンプトや PowerShell からではありません。
+
+<p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 
 ---
 
@@ -87,7 +99,7 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
 ### 必須要件
 
 1. **WSL2 + Ubuntu 24.04以降**: 本システムはWSL2上のUbuntu 24.04以降（systemd環境）を前提としています
-2. **Docker**: [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/) または WSL上のDockerが動作していること
+2. **Docker**: [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/) が起動していること
 3. **一般ユーザー**: `root` ではなく、標準の一般ユーザーで実行すること
 4. **SSHサーバー**: WSL環境では `openssh-server` が必要です
    ```bash
@@ -301,6 +313,23 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-ter
 WSLを再起動（`wsl --shutdown`など）した後、`docker`コマンドが見つからないエラーが発生することがあります。これはDocker DesktopとWSLの統合が一時的に切断されるためです。
 
 **対処方法**: Docker Desktop を再起動してください（タスクトレイのDockerアイコン → Restart）。
+
+<p align="right">(<a href="#目次">トップへ戻る</a>)</p>
+
+---
+
+## 🔧 トラブルシューティング
+
+よく遭遇する問題と確認ポイントをまとめています。
+
+- **現象**: インストール時に `sudo service ssh start` を実行するようメッセージが表示される
+- **対策**: 同じWSLターミナル内でそのコマンドを実行する
+
+- **現象**: スマホから接続できない
+- **対策**: Docker Desktop for Windowsが起動しているか確認する。Tailscaleが接続されているか確認する（両方ともWindows側のGUIで確認）
+
+- **現象**: 上記で解決しない
+- **対策**: このREADMEをClaude CodeなどのAIに渡して質問する（本ドキュメント自体がAIで作成されています）
 
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 
