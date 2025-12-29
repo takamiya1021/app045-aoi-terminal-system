@@ -94,6 +94,11 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
    sudo apt update && sudo apt install -y openssh-server
    sudo service ssh start
    ```
+5. **VPN（Tailscale等）**: スマホ/タブレットとWindows PCが同一VPNネットワーク上にあること
+   - [Tailscale](https://tailscale.com/) 推奨（無料プランあり、簡単セットアップ）
+   - スマホ（Android/iOS）と**Windows**の両方にTailscaleをインストール
+   - ⚠️ **注意**: TailscaleはWSLではなく**Windows側**にインストールしてください
+   - 同じTailscaleアカウントでログインすれば、プライベートIPで相互接続可能
 
 ### WSL2環境での注意事項（Ubuntu 24.04以降）
 
