@@ -322,14 +322,14 @@ WSLを再起動（`wsl --shutdown`など）した後、`docker`コマンドが�
 
 よく遭遇する問題と確認ポイントをまとめています。
 
-- **現象**: インストール時に `sudo service ssh start` を実行するようメッセージが表示される
-  **対策**: 同じWSLターミナル内でそのコマンドを実行する
+**現象**: インストール時に `sudo service ssh start` を実行するようメッセージが表示される
+**対策**: 同じWSLターミナル内でそのコマンドを実行する
 
-- **現象**: スマホから接続できない
-  **対策**: Docker Desktop for Windowsが起動しているか確認する。Tailscaleが接続されているか確認する（両方ともWindows側のGUIで確認）
+**現象**: スマホから接続できない
+**対策**: Docker Desktop for Windowsが起動しているか確認する。Tailscaleが接続されているか確認する（両方ともWindows側のGUIで確認）
 
-- **現象**: 上記で解決しない
-  **対策**: このREADMEをClaude CodeなどのAIに渡して質問する（本ドキュメント自体がAIで作成されています）
+**現象**: 上記で解決しない
+**対策**: このREADMEをClaude CodeなどのAIに渡して質問する（本ドキュメント自体がAIで作成されています）
 
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 
