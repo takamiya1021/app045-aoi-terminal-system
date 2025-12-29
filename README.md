@@ -100,7 +100,9 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
 
 1. **WSL2 + Ubuntu 24.04以降**: 本システムはWSL2上のUbuntu 24.04以降（systemd環境）を前提としています
 2. **Docker**: [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/) が起動していること
-3. **一般ユーザー**: `root` ではなく、標準の一般ユーザーで実行すること
+3. **一般ユーザー（UID 1000推奨）**: `root` ではなく、WSLで最初に作成したユーザー（UID 1000）で実行すること
+   - 確認方法: `id -u` を実行して `1000` と表示されればOK
+   - **UID 1000以外の場合**: インストール時に「ユーザーIDが1000ではありませんが続行しますか？」という確認メッセージが表示されます。続行を選択すると、コンテナ起動時にSSH鍵を自動的にコピーして権限を調整する処理が行われます
 4. **SSHサーバー**: WSL環境では `openssh-server` が必要です
    ```bash
    sudo apt update && sudo apt install -y openssh-server

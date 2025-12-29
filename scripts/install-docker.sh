@@ -260,10 +260,29 @@ if [[ ! -f "$SSH_PUB" ]]; then
   echo "🔑 Regenerating public key from private key..."
   ssh-keygen -y -f "$SSH_KEY" </dev/null > "$SSH_PUB"
 fi
-# コンテナ内のnodeユーザー(UID 1000)がホストユーザー(UID可変)の鍵を読めるよう644に設定
-# この鍵はaoi-terminalsブリッジ専用で、Dockerボリューム経由でのみ使用される
-chmod 644 "$SSH_KEY"
+# SSH秘密鍵のパーミッション設定（SSHの要件に従い600）
+chmod 600 "$SSH_KEY"
 chmod 644 "$SSH_PUB"
+
+# UID 1000チェック（Dockerコンテナ内のnodeユーザーとの互換性確認）
+HOST_UID=$(id -u)
+if [[ "$HOST_UID" -ne 1000 ]]; then
+  echo ""
+  echo "⚠️  警告: 現在のユーザーのUID ($HOST_UID) は 1000 ではありません。"
+  echo "   Dockerコンテナ内のユーザー(UID 1000)との互換性のため、"
+  echo "   通常はUID 1000のユーザー（WSLで最初に作成したユーザー）を推奨します。"
+  echo ""
+  echo "   UID 1000以外でも動作しますが、SSH鍵の自動コピー処理が行われます。"
+  echo ""
+  read -p "   このまま続行しますか？ (y/N): " -r REPLY </dev/tty
+  if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
+    echo "❌ インストールを中止しました。"
+    echo "   UID 1000のユーザーで再実行してください。"
+    echo "   確認方法: id -u （1000と表示されればOK）"
+    exit 1
+  fi
+  echo "✅ 続行します（SSH鍵の自動コピーが有効になります）"
+fi
 
 # ホスト側の authorized_keys に登録（常に追加）
 echo "[aoi-terminals] 🔑 Registering bridge key..."
