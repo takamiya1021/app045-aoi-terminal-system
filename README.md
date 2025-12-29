@@ -99,6 +99,7 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
    - スマホ（Android/iOS）と**Windows**の両方にTailscaleをインストール
    - ⚠️ **注意**: TailscaleはWSLではなく**Windows側**にインストールしてください
    - 同じTailscaleアカウントでログインすれば、プライベートIPで相互接続可能
+   - Aoi-Terminalsは、このTailscaleの接続が確立している状態で動作します。
 
 ### WSL2環境での注意事項（Ubuntu 24.04以降）
 
