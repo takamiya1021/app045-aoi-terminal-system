@@ -119,7 +119,7 @@ export class PtyManager {
 
     const shell = process.env.SHELL || 'bash';
     const useTmux = !['0', 'false', 'no'].includes(String(process.env.TERMINAL_USE_TMUX || 'true').toLowerCase());
-    const tmuxSessionName = (process.env.TERMINAL_TMUX_SESSION || `its-${sessionId}`).replace(/[^a-zA-Z0-9_-]/g, '-');
+    const tmuxSessionName = (process.env.TERMINAL_TMUX_SESSION || 'aoi-terminals').replace(/[^a-zA-Z0-9_-]/g, '-');
 
     try {
       let buildShell = shell;

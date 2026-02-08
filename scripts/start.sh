@@ -81,7 +81,7 @@ fi
 # 新しいtmuxセッションを作成 (デタッチモード)
 echo "🚀 Starting System in tmux session 'terminal-system'..."
 tmux new-session -d -s terminal-system -n backend "cd backend && npm run build && TERMINAL_TOKEN=${TERMINAL_TOKEN} PORT=3102 ALLOWED_ORIGINS=${ALLOWED_ORIGINS} npm run start"
-tmux new-window -t terminal-system:1 -n frontend "cd frontend && npm run dev -- --hostname 0.0.0.0 --port 3101"
+tmux new-window -t terminal-system:1 -n frontend "cd frontend && npx vite --host 0.0.0.0 --port 3101"
 
 echo "---"
 echo "✅ System started in tmux!"

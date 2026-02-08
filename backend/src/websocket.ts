@@ -4,15 +4,13 @@ import { logger } from './logger.js';
 import type { ClientMessage, ServerMessage } from './types.js';
 import { getSessionIdFromCookie, isSessionValid } from './auth.js';
 import { PtyManager } from './pty-manager.js';
-import { TmuxHelper } from './tmux-helper.js';
 import { config } from './config.js';
 
 export function createWebSocketServer(server: http.Server): WebSocketServer {
   const wss = new WebSocketServer({ server });
 
-  // Instantiate PtyManager and TmuxHelper
+  // PtyManagerのインスタンス生成
   const ptyManager = new PtyManager();
-  const tmuxHelper = new TmuxHelper(ptyManager);
 
   wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
     // Origin 制限（ブラウザからの接続のみ許可したい場合の最低限）
@@ -40,42 +38,14 @@ export function createWebSocketServer(server: http.Server): WebSocketServer {
       (ws as any).isAlive = true;
     });
 
-    // Create a new session for this client
+    // クライアントセッションの作成
     const ptySessionId = 'client-' + Math.random().toString(36).substring(2, 15);
-    let tmuxDetached = false;
 
     const getTmuxSessionName = () => {
       const raw = process.env.TERMINAL_TMUX_SESSION || `its-${ptySessionId}`;
       return raw.replace(/[^a-zA-Z0-9_-]/g, '-');
     };
     const tmuxSessionName = getTmuxSessionName();
-
-    const tmuxKeyForCommand = (command: string): string | null => {
-      switch (command) {
-        case 'new-window':
-          return 'c';
-        case 'next-window':
-          return 'n';
-        case 'previous-window':
-          return 'p';
-        case 'detach':
-          return 'd';
-        case 'split-window -v':
-          return '%';
-        case 'split-window -h':
-          return '"';
-        case 'select-pane -t:.+':
-          return 'o';
-        case 'zoom-pane':
-          return 'z';
-        case 'resize-pane -Z':
-          return 'z';
-        case 'copy-mode':
-          return '[';
-        default:
-          return null;
-      }
-    };
 
     ptyManager.createSession(ptySessionId, (data: string) => {
       try {
@@ -86,12 +56,11 @@ export function createWebSocketServer(server: http.Server): WebSocketServer {
       }
     });
 
-    // Send connected message with session ID
+    // 接続完了メッセージの送信
     ws.send(JSON.stringify({
       type: 'connected',
       sessionId: ptySessionId,
-      tmuxSession: tmuxSessionName,
-      isDetached: tmuxDetached
+      tmuxSession: tmuxSessionName
     } as ServerMessage));
 
     ws.on('message', async (message: WebSocket.Data) => {
@@ -118,53 +87,6 @@ export function createWebSocketServer(server: http.Server): WebSocketServer {
             break;
           case 'resize':
             ptyManager.resize(ptySessionId, parsedMessage.cols, parsedMessage.rows);
-            break;
-          case 'tmux-command': {
-            if (parsedMessage.command === 'detach') {
-              logger.info(`Session ${ptySessionId}: Setting tmuxDetached = true`);
-              tmuxDetached = true;
-            } else if (parsedMessage.command === 'attach-session') {
-              logger.info(`Session ${ptySessionId}: Manual attach requested. Setting tmuxDetached = false`);
-              ptyManager.write(ptySessionId, `tmux attach -t ${tmuxSessionName}\r`);
-              tmuxDetached = false;
-              break;
-            }
-
-            // Detach後は、まずattachしてからキー操作で実行（1タップで戻れる）
-            if (tmuxDetached && parsedMessage.command !== 'detach') {
-              const key = tmuxKeyForCommand(parsedMessage.command);
-              if (key) {
-                logger.info(`Session ${ptySessionId}: Auto-attaching for command [${parsedMessage.command}]`);
-                ptyManager.write(ptySessionId, `tmux attach -t ${tmuxSessionName}\r`);
-                setTimeout(() => {
-                  ptyManager.write(ptySessionId, `\x02${key}`);
-                }, 120);
-                tmuxDetached = false;
-                break;
-              }
-            }
-
-            try {
-              await tmuxHelper.executeCommand(ptySessionId, parsedMessage.command, parsedMessage.args);
-            } catch (error) {
-              const message = error instanceof Error ? error.message : String(error);
-              ws.send(JSON.stringify({ type: 'error', message: `[tmux-command-error] ${message}` } as ServerMessage));
-            }
-            break;
-          }
-          case 'session-info-request':
-            try {
-              const windows = await tmuxHelper.listWindows(ptySessionId);
-              ws.send(JSON.stringify({
-                type: 'session-info-response',
-                windows,
-                isDetached: tmuxDetached
-              } as ServerMessage));
-            } catch (error) {
-              const message = error instanceof Error ? error.message : String(error);
-              // Background status info errors should NOT be sent as terminal output spam
-              ws.send(JSON.stringify({ type: 'error', message: `[tmux-status-error] ${message}` } as ServerMessage));
-            }
             break;
           default:
             logger.warn(`Unknown message type: ${(parsedMessage as any).type}`);

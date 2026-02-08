@@ -2,11 +2,8 @@
 export type MessageType =
   | 'input'
   | 'resize'
-  | 'tmux-command'
-  | 'session-info-request'
   | 'output'
   | 'connected'
-  | 'session-info-response'
   | 'error';
 
 // クライアント -> サーバー
@@ -25,17 +22,7 @@ export interface ResizeMessage extends BaseClientMessage {
   rows: number;
 }
 
-export interface TmuxCommandMessage extends BaseClientMessage {
-  type: 'tmux-command';
-  command: string; // 'new-window', 'split-window', etc.
-  args?: string[];
-}
-
-export interface SessionInfoRequest extends BaseClientMessage {
-  type: 'session-info-request';
-}
-
-export type ClientMessage = InputMessage | ResizeMessage | TmuxCommandMessage | SessionInfoRequest;
+export type ClientMessage = InputMessage | ResizeMessage;
 
 // サーバー -> クライアント
 export interface BaseServerMessage {
@@ -51,20 +38,6 @@ export interface ConnectedMessage extends BaseServerMessage {
   type: 'connected';
   sessionId: string;
   tmuxSession: string;
-  isDetached?: boolean;
-}
-
-export interface TmuxWindow {
-  id: string;
-  name: string;
-  active: boolean;
-  panes: number;
-}
-
-export interface SessionInfoResponse extends BaseServerMessage {
-  type: 'session-info-response';
-  windows: TmuxWindow[];
-  isDetached?: boolean;
 }
 
 export interface ErrorMessage extends BaseServerMessage {
@@ -72,4 +45,4 @@ export interface ErrorMessage extends BaseServerMessage {
   message: string;
 }
 
-export type ServerMessage = OutputMessage | ConnectedMessage | SessionInfoResponse | ErrorMessage;
+export type ServerMessage = OutputMessage | ConnectedMessage | ErrorMessage;

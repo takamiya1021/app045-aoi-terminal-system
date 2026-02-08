@@ -1,5 +1,3 @@
-'use client';
-
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ClientMessage, ServerMessage } from '@/lib/types';
 

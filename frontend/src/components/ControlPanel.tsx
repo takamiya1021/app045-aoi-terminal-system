@@ -1,5 +1,3 @@
-'use client';
-
 import React from 'react';
 
 interface ControlPanelProps {
@@ -39,7 +37,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSendKey, onOpenTextInput 
     <div className="p-2 md:p-3 bg-slate-800 border-t border-slate-700 flex flex-col gap-2 shadow-inner">
       {/* Special Keys */}
       <div className="flex flex-wrap gap-2">
-        {renderButton('Ctrl', '\x02', 'CtrlKey')}
         {renderButton('Alt', '\x1b', 'AltKey')}
         {renderButton('Esc', '\x1b', 'EscKey')}
         {renderButton('Tab', '\t', 'TabKey')}

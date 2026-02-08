@@ -1,29 +1,20 @@
-'use client';
-
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import dynamic from 'next/dynamic';
-import Layout from '../components/Layout';
-import ControlPanel from '../components/ControlPanel';
-import TmuxPanel from '../components/TmuxPanel';
-import SessionManager from '../components/SessionManager';
-import { useWebSocket } from '../hooks/useWebSocket';
-import TextInputModal from '../components/TextInputModal'; // For mobile IME or special inputs
-import ShareLinkModal from '../components/ShareLinkModal';
-import { TmuxWindow } from '@/lib/types';
+import Layout from './components/Layout';
+import ControlPanel from './components/ControlPanel';
+import TerminalComponent from './components/Terminal';
+import { useWebSocket } from './hooks/useWebSocket';
+import TmuxPanel from './components/TmuxPanel';
+import TextInputModal from './components/TextInputModal';
+import ShareLinkModal from './components/ShareLinkModal';
 
-// Dynamically import TerminalComponent with ssr: false
-const TerminalComponent = dynamic(() => import('../components/Terminal'), {
-  ssr: false,
-  loading: () => <div className="w-full h-full bg-gray-950 flex items-center justify-center text-gray-500">Loading Terminal...</div>,
-});
-
-export default function Home() {
+export default function App() {
   const [showTextInputModal, setShowTextInputModal] = useState(false);
   const [initialTextInputValue, setInitialTextInputValue] = useState('');
   const incomingBufferRef = useRef<string[]>([]);
   const [incomingTick, setIncomingTick] = useState(0);
   const lastInputRef = useRef<{ data: string; timestamp: number } | null>(null);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [isTmuxPanelOpen, setIsTmuxPanelOpen] = useState(false);
   const baselineViewportRef = useRef<number | null>(null);
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -31,10 +22,6 @@ export default function Home() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthBusy, setIsAuthBusy] = useState(false);
   const [wsErrorMessage, setWsErrorMessage] = useState<string | null>(null);
-
-  const [tmuxWindows, setTmuxWindows] = useState<TmuxWindow[]>([]);
-  const [isDetached, setIsDetached] = useState(false);
-  const activeWindowId = useMemo(() => tmuxWindows.find(w => w.active)?.id || null, [tmuxWindows]);
 
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -47,12 +34,10 @@ export default function Home() {
   const [wsUrl, setWsUrl] = useState('');
 
   const backendHttpBase = useMemo(() => {
-    if (typeof window === 'undefined') return '';
     return `http://${window.location.hostname}:3102`;
   }, []);
 
   const backendWsUrl = useMemo(() => {
-    if (typeof window === 'undefined') return '';
     const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
     return `${scheme}://${window.location.hostname}:3102`;
   }, []);
@@ -105,8 +90,7 @@ export default function Home() {
 
         setIsAuthenticated(true);
 
-        if (opts?.clearUrlToken && typeof window !== 'undefined') {
-          // URLにトークンを残さない（/??token=... の互換だけ残す）
+        if (opts?.clearUrlToken) {
           window.history.replaceState(null, '', window.location.pathname);
         }
       } catch (err) {
@@ -122,8 +106,6 @@ export default function Home() {
   );
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
     const threshold = 120;
     const updateKeyboardState = () => {
       const viewport = window.visualViewport;
@@ -146,8 +128,6 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
     const threshold = 120;
     const updateKeyboardState = () => {
       const viewport = window.visualViewport;
@@ -175,8 +155,6 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (typeof document === 'undefined') return;
-
     const body = document.body;
     const html = document.documentElement;
     const prevBodyOverflow = body.style.overflow;
@@ -206,10 +184,7 @@ export default function Home() {
   }, [isKeyboardOpen]);
 
   useEffect(() => {
-    // 互換: 旧URL（/?token=...）
-    // - one-time token をURLに載せるので、成功したら即URLから消す
-    // - Next dev (StrictMode) は mount/unmount を挟むことがあるため、
-    //   “/auth を多重実行しない + /session を短時間ポーリング” で二重実行に耐える
+    // URLトークン自動ログイン（/?token=...）
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('token');
     if (urlToken && urlToken.trim() !== '') {
@@ -241,7 +216,7 @@ export default function Home() {
 
         // StrictMode remount対策: 同じtokenで /auth を多重発火しない
         const attemptKey = `its:url-token-attempted:${urlToken}`;
-        const alreadyAttempted = typeof sessionStorage !== 'undefined' && sessionStorage.getItem(attemptKey) === '1';
+        const alreadyAttempted = sessionStorage.getItem(attemptKey) === '1';
         if (!alreadyAttempted) {
           try {
             sessionStorage.setItem(attemptKey, '1');
@@ -249,7 +224,6 @@ export default function Home() {
             // ignore
           }
 
-          // /auth を投げる（結果で cookie がセットされる）
           console.log('[DEBUG] Auto-login: Backend URL:', backendHttpBase);
           console.log('[DEBUG] Auto-login: Attempting to connect to:', `${backendHttpBase}/auth`);
           console.log('[DEBUG] Auto-login: URL token:', urlToken);
@@ -267,7 +241,6 @@ export default function Home() {
               return;
             }
 
-            // /auth 成功後はまず URL から token を消す（ワンタイムなので残さない）
             window.history.replaceState(null, '', window.location.pathname);
             setAuthError(null);
           } catch (err) {
@@ -279,7 +252,6 @@ export default function Home() {
           }
         }
 
-        // cookie が反映されるまで少し待ってから最終確定する（失敗時はログイン画面へ戻す）
         const ok = await pollSession(10000);
         if (!ok) {
           setIsAuthenticated(false);
@@ -314,15 +286,9 @@ export default function Home() {
       }
       if (message.type === 'connected') {
         setIsAuthenticated(true);
-        setIsDetached(!!message.isDetached);
         console.log('Connected to PTY session:', message.sessionId);
       }
-      if (message.type === 'session-info-response') {
-        setTmuxWindows(message.windows);
-        setIsDetached(!!message.isDetached);
-      }
       if (message.type === 'error') {
-        // バックエンド側が認証エラー等でcloseする前に送ってくるやつ
         setWsErrorMessage(message.message || 'WebSocket error');
         void checkSession();
       }
@@ -336,19 +302,6 @@ export default function Home() {
     onError: (event) => console.error('WebSocket error:', event),
   });
 
-  // 定期的にセッション情報を取得
-  useEffect(() => {
-    if (!isAuthenticated || !wsUrl) return;
-
-    const fetchSessionInfo = () => {
-      sendMessage({ type: 'session-info-request' });
-    };
-
-    fetchSessionInfo(); // 初回
-    const interval = setInterval(fetchSessionInfo, 5000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated, wsUrl, sendMessage]);
-
   const drainIncoming = useCallback(() => {
     const chunks = incomingBufferRef.current;
     incomingBufferRef.current = [];
@@ -357,7 +310,6 @@ export default function Home() {
 
   const handleTerminalData = useCallback((data: string) => {
     // スマホのブラウザで二重にイベントが発火する問題を回避
-    // 同じデータが50ms以内に来た場合はスキップ
     const now = Date.now();
     const last = lastInputRef.current;
     if (last && last.data === data && now - last.timestamp < 50) {
@@ -377,36 +329,9 @@ export default function Home() {
     sendMessage({ type: 'input', data: key });
   }, [sendMessage]);
 
-  const handleTmuxCommand = useCallback((command: string, args?: string[]) => {
-    // Optimistic UI update: Detach/Attach
-    if (command === 'detach') {
-      setIsDetached(true);
-    } else if (command === 'attach-session') {
-      setIsDetached(false);
-    }
-
-    sendMessage({ type: 'tmux-command', command, args });
-    // 即座に反映させるために再取得をリクエスト（特にDetach/Attach用）
-    sendMessage({ type: 'session-info-request' });
-  }, [sendMessage]);
-
   const handleTextInputModalSubmit = useCallback((value: string) => {
     sendMessage({ type: 'input', data: value });
     setShowTextInputModal(false);
-  }, [sendMessage]);
-
-  const handleSelectWindow = useCallback((windowId: string) => {
-    // tmux select-window -t %id
-    sendMessage({ type: 'tmux-command', command: 'select-window', args: ['-t', windowId] });
-    // 即座に反映させるために再取得をリクエスト
-    sendMessage({ type: 'session-info-request' });
-  }, [sendMessage]);
-
-  const handleRenameWindow = useCallback((windowId: string, newName: string) => {
-    // tmux rename-window -t %id "newname"
-    sendMessage({ type: 'tmux-command', command: 'rename-window', args: ['-t', windowId, newName] });
-    // 即座に反映させるために再取得をリクエスト
-    sendMessage({ type: 'session-info-request' });
   }, [sendMessage]);
 
   const generateShareLink = useCallback(async () => {
@@ -420,7 +345,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ isShare: true }), // シェア用QR（6時間セッション）
+        body: JSON.stringify({ isShare: true }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
@@ -607,16 +532,12 @@ export default function Home() {
         </div>
         {isAuthenticated && !isKeyboardOpen && (
           <div className="flex flex-col border-t border-slate-700 bg-slate-800">
-            <TmuxPanel onSendCommand={handleTmuxCommand} isDetached={isDetached} />
-            <SessionManager
-              windows={tmuxWindows}
-              currentWindowId={activeWindowId}
-              onSelectWindow={handleSelectWindow}
-              onRenameWindow={handleRenameWindow}
-            />
-            <div data-testid="control-panel">
-              <ControlPanel onSendKey={handleControlPanelKey} onOpenTextInput={openTextInput} />
-            </div>
+            {!isTmuxPanelOpen && (
+              <div data-testid="control-panel">
+                <ControlPanel onSendKey={handleControlPanelKey} onOpenTextInput={openTextInput} />
+              </div>
+            )}
+            <TmuxPanel isOpen={isTmuxPanelOpen} onToggle={() => setIsTmuxPanelOpen(!isTmuxPanelOpen)} onSendKey={handleControlPanelKey} onOpenTextInput={openTextInput} />
           </div>
         )}
       </div>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description" content="Web-based remote terminal with Japanese IME support" />
+    <title>Aoi-Terminals</title>
+    <link rel="icon" type="image/svg+xml" href="/terminal-logo.svg" />
+    <style>
+      @font-face {
+        font-family: 'Geist Sans';
+        src: url('/fonts/GeistVF.woff') format('woff');
+        font-weight: 100 900;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Geist Mono';
+        src: url('/fonts/GeistMonoVF.woff') format('woff');
+        font-weight: 100 900;
+        font-display: swap;
+      }
+    </style>
+  </head>
+  <body class="antialiased" style="font-family: 'Geist Sans', Arial, Helvetica, sans-serif;">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

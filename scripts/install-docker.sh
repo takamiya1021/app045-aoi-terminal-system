@@ -1,410 +1,191 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Aoi-Terminals "one command" installer for Docker.
+# Aoi-Terminals v2 インストーラー
+# WSLネイティブDocker + Tailscale（WSL上）前提
 #
-# 使い方例（このスクリプトを raw.githubusercontent.com で配る想定）:
-#   curl -fsSL https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/install-docker.sh \
-#     | AOI_TERMINALS_IMAGE_REPO=ghcr.io/takamiya1021/app045-aoi-terminal-system TERMINAL_TOKEN=your_token bash
-#
-# NOTE:
-# - ここでは GHCR 上のビルド済みイメージを pull して起動する（ビルド不要）。
-# - 設定は ~/.aoi-terminals/.env に保存される。
+# 使い方:
+#   curl -fsSL https://raw.githubusercontent.com/.../install-docker.sh | bash
 
-# 1. 基本設定
-# ---------------------------------------------------------
 # Rootユーザーチェック
 if [[ $EUID -eq 0 ]]; then
-   echo "❌ Error: This script must NOT be run as root."
-   echo "   Please run as a normal user (e.g. your WSL default user)."
-   echo ""
-   echo "❌ エラー: このスクリプトは root ユーザーでは実行できません。"
-   echo "   一般ユーザー（WSLのデフォルトユーザーなど）で実行してください。"
+   echo "❌ root では実行できません。一般ユーザーで実行してください。"
    exit 1
 fi
 
-# Dockerグループ所属チェック & 自動追加
-# id コマンドで「このディストリビューション内での」グループ所属を確認
+# Dockerグループチェック
 if ! id -nG "$USER" 2>/dev/null | grep -qw "docker"; then
-  echo "⚠️ User '$USER' is not in the 'docker' group."
-  echo "🔧 Adding user to 'docker' group (requires sudo)..."
+  echo "⚠️ '$USER' が docker グループに所属していません。追加します..."
   if sudo usermod -aG docker "$USER"; then
-    echo "✅ Successfully added to docker group."
-    echo "⚠️ IMPORTANT: You MUST restart your WSL terminal for this change to take effect."
-    echo "   (Run 'wsl --terminate <DistroName>' from PowerShell, or close all terminal windows)"
-    echo "⚠️ 重要: 設定を反映するために、必ずターミナル(WSL)を再起動してください。"
-    echo ""
-    echo "再起動後、以下を実行してください:"
-    echo "  ~/.aoi-terminals/aoi-terminals start"
+    echo "✅ docker グループに追加しました。"
+    echo "⚠️ WSLを再起動してから再実行してください。"
     exit 0
   else
-    echo "❌ Failed to add user to docker group. Please run manually:"
-    echo "   sudo usermod -aG docker $USER"
+    echo "❌ 追加に失敗しました。手動で実行: sudo usermod -aG docker $USER"
     exit 1
   fi
 fi
 
-# ---------------------------------------------------------
-# WSL Interop チェック・自動有効化
-# ---------------------------------------------------------
-echo "[aoi-terminals] 🔍 Checking WSL Interop..."
-if [[ ! -f /proc/sys/fs/binfmt_misc/WSLInterop ]]; then
-  echo "[aoi-terminals] ⚠️  WSL Interop is disabled. Enabling..."
-
-  # systemd の有無で処理を分岐（PID 1がsystemdかどうかで判定）
-  if [[ "$(cat /proc/1/comm 2>/dev/null)" == "systemd" ]]; then
-    # systemd 環境：永続設定（再起動後も有効）
-    echo "[aoi-terminals] 📝 Detected systemd environment. Applying persistent configuration..."
-    if sudo mkdir -p /etc/binfmt.d && \
-       echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /etc/binfmt.d/WSLInterop.conf >/dev/null && \
-       sudo systemctl restart systemd-binfmt; then
-      : # Success
-    else
-      echo "[aoi-terminals] ❌ Failed to enable WSL Interop (systemd method)."
-      echo "    Please run manually:"
-      echo "      sudo mkdir -p /etc/binfmt.d"
-      echo "      echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /etc/binfmt.d/WSLInterop.conf"
-      echo "      sudo systemctl restart systemd-binfmt"
-      exit 1
-    fi
-  else
-    # 非systemd環境：即時登録（再起動で消える）
-    echo "[aoi-terminals] 📝 Detected non-systemd environment. Applying immediate registration..."
-    if echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /proc/sys/fs/binfmt_misc/register >/dev/null; then
-      : # Success
-    else
-      echo "[aoi-terminals] ❌ Failed to enable WSL Interop (immediate method)."
-      echo "    Please run manually:"
-      echo "      echo ':WSLInterop:M::MZ::/init:PF' | sudo tee /proc/sys/fs/binfmt_misc/register"
-      exit 1
-    fi
-  fi
-
-  # 有効化確認
-  if [[ -f /proc/sys/fs/binfmt_misc/WSLInterop ]]; then
-    echo "[aoi-terminals] ✅ WSL Interop enabled successfully"
-  else
-    echo "[aoi-terminals] ⚠️  WSL Interop setup completed, but requires WSL restart."
-    echo "    Please run: wsl --shutdown (from Windows)"
-    echo "    Then restart WSL and run the installer again."
-  fi
-else
-  echo "[aoi-terminals] ✅ WSL Interop is already enabled"
-fi
-
-DEFAULT_IMAGE_REPO="ghcr.io/takamiya1021/app045-aoi-terminal-system"
-DEFAULT_TAG="latest"
-DEFAULT_INSTALL_DIR="$HOME/.aoi-terminals"
-FRONTEND_PORT_DEFAULT="3101"
-BACKEND_PORT_DEFAULT="3102"
-DEFAULT_LINK_TOKEN_TTL="300"
-DEFAULT_COOKIE_SECURE="0"
-DEFAULT_ALLOWED_ORIGINS="http://localhost:3101,http://127.0.0.1:3101"
-
-# curl | bash 実行時や環境による BASH_SOURCE の挙動を吸収する
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" >/dev/null 2>&1 && pwd || echo ".")"
-
-generate_terminal_token() {
-  # 依存を増やさずに、それなりに強いトークンを作る（base64url）
-  if command -v openssl >/dev/null 2>&1; then
-    openssl rand -base64 32 | tr -d '\n' | tr '+/' '-_' | tr -d '='
-    return 0
-  fi
-
-  if command -v python3 >/dev/null 2>&1; then
-    python3 - <<'PY'
-import os, base64
-print(base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip("="), end="")
-PY
-    return 0
-  fi
-
-  # openssl も python も無い環境向け（/dev/urandom + base64）
-  dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 | tr -d '\n' | tr '+/' '-_' | tr -d '='
-}
-
-detect_public_base_url() {
-  local port="$FRONTEND_PORT_DEFAULT"
-
-  if [[ -n "${TERMINAL_PUBLIC_BASE_URL:-}" ]]; then
-    printf "%s" "${TERMINAL_PUBLIC_BASE_URL%/}"
-    return 0
-  fi
-
-  # Tailscale優先: Windows側の tailscale.exe または Linux側の tailscale を探す
-  local ts_exe=""
-  if command -v tailscale.exe >/dev/null 2>&1; then
-    ts_exe="tailscale.exe"
-  elif [[ -f "/mnt/c/Program Files/Tailscale/tailscale.exe" ]]; then
-    ts_exe="/mnt/c/Program Files/Tailscale/tailscale.exe"
-  elif command -v tailscale >/dev/null 2>&1; then
-    ts_exe="tailscale"
-  fi
-
-  if [[ -n "$ts_exe" ]]; then
-    local ts_ip=""
-    # Windows側のTailscaleが応答しない場合があるのでタイムアウト(2秒)を設定
-    ts_ip="$(timeout 2s "$ts_exe" ip -4 </dev/null 2>/dev/null | tr -d '\r' | head -n 1 || true)"
-    if [[ -n "$ts_ip" ]]; then
-      printf "http://%s:%s" "$ts_ip" "$port"
-      return 0
-    fi
-  fi
-
-  # ベストエフォート: WSL内IPを拾う（LANから見える保証はない）
-  local ip_guess=""
-  ip_guess="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
-  if [[ -n "$ip_guess" ]]; then
-    printf "http://%s:%s" "$ip_guess" "$port"
-    return 0
-  fi
-
-  printf "http://localhost:%s" "$ip_guess" "$port"
-}
-
-read_env_value() {
-  local key="$1"
-  local file="$2"
-  if [[ ! -f "$file" ]]; then
-    return 1
-  fi
-  local line
-  line="$(grep -E "^${key}=" "$file" | tail -n 1 || true)"
-  if [[ -z "$line" ]]; then
-    return 1
-  fi
-  local val="${line#${key}=}"
-  # Remove surrounding quotes if present
-  val="${val%\"}"
-  val="${val#\"}"
-  printf "%s" "$val"
-}
-
-ensure_env_value() {
-  local key="$1"
-  local value="$2"
-  local file="$3"
-
-  if grep -qE "^${key}=" "$file"; then
-    # 値中に / があり得るので区切りは | を使う
-    sed -i "s|^${key}=.*|${key}=\"${value}\"|" "$file"
-  else
-    printf "\n%s=\"%s\"\n" "$key" "$value" >>"$file"
-  fi
-}
-
-append_allowed_origin_if_missing() {
-  local origin="$1"
-  local file="$2"
-
-  if [[ -z "$origin" ]]; then
-    return 0
-  fi
-
-  local current=""
-  current="$(read_env_value "ALLOWED_ORIGINS" "$file" || true)"
-  if [[ -z "$current" ]]; then
-    ensure_env_value "ALLOWED_ORIGINS" "$origin" "$file"
-    return 0
-  fi
-
-  # すでに含まれてたら何もしない
-  if printf "%s" "$current" | tr ',' '\n' | grep -Fxq "$origin"; then
-    return 0
-  fi
-
-  ensure_env_value "ALLOWED_ORIGINS" "${current},${origin}" "$file"
-}
-
-extract_json_string() {
-  local key="$1"
-  # 超軽量パーサ: {"token":"..."} の ... を抜く（tokenはbase64url想定）
-  sed -n "s/.*\"${key}\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p" | head -n 1
-}
-
+# Docker確認
 if ! command -v docker >/dev/null 2>&1; then
-  echo "[aoi-terminals] docker が見つかりません。Dockerをインストールしてから再実行してください。"
+  echo "❌ docker が見つかりません。先にDockerをインストールしてください。"
   exit 1
 fi
 
 COMPOSE=()
-COMPOSE_LABEL=""
 if docker compose version >/dev/null 2>&1; then
   COMPOSE=(docker compose)
-  COMPOSE_LABEL="docker compose"
-elif command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
+elif command -v docker-compose >/dev/null 2>&1; then
   COMPOSE=(docker-compose)
-  COMPOSE_LABEL="docker-compose"
 else
-  echo "[aoi-terminals] docker compose が使用できません。"
+  echo "❌ docker compose が見つかりません。"
   exit 1
 fi
 
-IMAGE_REPO="$DEFAULT_IMAGE_REPO"
-TAG="$DEFAULT_TAG"
+# 設定値
+GHCR_REPO="ghcr.io/takamiya1021/app045-aoi-terminal-system"
+TAG="latest"
+INSTALL_DIR="$HOME/.aoi-terminals"
+FRONTEND_PORT="3101"
+BACKEND_PORT="3102"
 
-BASE_DIR="$DEFAULT_INSTALL_DIR"
-mkdir -p "$BASE_DIR"
-mkdir -p "$BASE_DIR/.ssh"
+mkdir -p "$INSTALL_DIR" "$INSTALL_DIR/.ssh"
 
 # SSH鍵の生成（初回のみ）
-SSH_KEY="$BASE_DIR/.ssh/id_rsa"
-SSH_PUB="${SSH_KEY}.pub"
+SSH_KEY="$INSTALL_DIR/.ssh/id_rsa"
 if [[ ! -f "$SSH_KEY" ]]; then
-  echo "🔑 Generating SSH key..."
+  echo "🔑 SSH鍵を生成..."
   ssh-keygen -t rsa -b 4096 -f "$SSH_KEY" -N "" -C "aoi-terminals-bridge" </dev/null
-else
-  echo "🔑 Using existing SSH key: $SSH_KEY"
 fi
-if [[ ! -f "$SSH_PUB" ]]; then
-  echo "🔑 Regenerating public key from private key..."
-  ssh-keygen -y -f "$SSH_KEY" </dev/null > "$SSH_PUB"
+if [[ ! -f "${SSH_KEY}.pub" ]]; then
+  ssh-keygen -y -f "$SSH_KEY" </dev/null > "${SSH_KEY}.pub"
 fi
-# SSH秘密鍵のパーミッション設定（SSHの要件に従い600）
 chmod 600 "$SSH_KEY"
-chmod 644 "$SSH_PUB"
+chmod 644 "${SSH_KEY}.pub"
 
-# UID 1000チェック（Dockerコンテナ内のnodeユーザーとの互換性確認）
-HOST_UID=$(id -u)
-if [[ "$HOST_UID" -ne 1000 ]]; then
-  echo ""
-  echo "⚠️  警告: 現在のユーザーのUID ($HOST_UID) は 1000 ではありません。"
-  echo "   Dockerコンテナ内のユーザー(UID 1000)との互換性のため、"
-  echo "   通常はUID 1000のユーザー（WSLで最初に作成したユーザー）を推奨します。"
-  echo ""
-  echo "   UID 1000以外でも動作しますが、SSH鍵の自動コピー処理が行われます。"
-  echo ""
-  read -p "   このまま続行しますか？ (y/N): " -r REPLY </dev/tty
-  if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
-    echo "❌ インストールを中止しました。"
-    echo "   UID 1000のユーザーで再実行してください。"
-    echo "   確認方法: id -u （1000と表示されればOK）"
-    exit 1
-  fi
-  echo "✅ 続行します（SSH鍵の自動コピーが有効になります）"
-fi
-
-# ホスト側の authorized_keys に登録（常に追加）
-echo "[aoi-terminals] 🔑 Registering bridge key..."
+# authorized_keysに登録
+echo "[aoi-terminals] 🔑 SSH鍵を登録..."
 mkdir -p "$HOME/.ssh"
 chmod 700 "$HOME/.ssh"
-PUB_KEY_CONTENT=$(cat "${SSH_KEY}.pub")
-# 既存の aoi-terminals 鍵を削除してから追加
+PUB_KEY=$(cat "${SSH_KEY}.pub")
 grep -v "aoi-terminals-bridge" "$HOME/.ssh/authorized_keys" 2>/dev/null > "$HOME/.ssh/authorized_keys.tmp" || true
-echo "$PUB_KEY_CONTENT" >> "$HOME/.ssh/authorized_keys.tmp"
+echo "$PUB_KEY" >> "$HOME/.ssh/authorized_keys.tmp"
 mv "$HOME/.ssh/authorized_keys.tmp" "$HOME/.ssh/authorized_keys"
 chmod 600 "$HOME/.ssh/authorized_keys"
 
-# ホストのユーザー名取得
-CURRENT_USER=$(whoami)
-# コンテナから見たホストIP
-HOST_IP=$(hostname -I | awk '{print $1}')
-# Docker Desktop on Windowsの場合、host.docker.internal は Windows側を指してしまう。
-# WSL内のSSHサーバーに繋ぐため、直接IPを指定する。
-SSH_TARGET="${CURRENT_USER}@${HOST_IP}"
+# Tailscale IP検出（WSL上）
+detect_public_url() {
+  if [[ -n "${TERMINAL_PUBLIC_BASE_URL:-}" ]]; then
+    printf "%s" "${TERMINAL_PUBLIC_BASE_URL%/}"
+    return
+  fi
+  if command -v tailscale >/dev/null 2>&1; then
+    local ts_ip
+    ts_ip="$(tailscale ip -4 2>/dev/null | head -n 1 || true)"
+    if [[ -n "$ts_ip" ]]; then
+      printf "http://%s:%s" "$ts_ip" "$FRONTEND_PORT"
+      return
+    fi
+  fi
+  printf "http://localhost:%s" "$FRONTEND_PORT"
+}
 
-PUBLIC_BASE_URL="$(detect_public_base_url)"
-PUBLIC_ORIGIN="${PUBLIC_BASE_URL%/}"
+# トークン生成
+generate_token() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -base64 32 | tr -d '\n' | tr '+/' '-_' | tr -d '='
+  else
+    dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 | tr -d '\n' | tr '+/' '-_' | tr -d '='
+  fi
+}
 
-# トークンの特定/生成
+# 既存トークンの保持 or 新規生成
 if [[ -n "${TERMINAL_TOKEN:-}" ]]; then
-  token_source="provided"
-elif [[ -f "$BASE_DIR/.env" ]]; then
-  token_source="existing"
-  TERMINAL_TOKEN="$(read_env_value "TERMINAL_TOKEN" "$BASE_DIR/.env")"
-else
-  token_source="generated"
-  TERMINAL_TOKEN="$(generate_terminal_token)"
+  TOKEN="$TERMINAL_TOKEN"
+elif [[ -f "$INSTALL_DIR/.env" ]]; then
+  TOKEN="$(grep -E '^TERMINAL_TOKEN=' "$INSTALL_DIR/.env" | tail -1 | cut -d'=' -f2- | tr -d '"' || true)"
+fi
+if [[ -z "${TOKEN:-}" ]]; then
+  TOKEN="$(generate_token)"
 fi
 
-cat >"$BASE_DIR/docker-compose.yml" <<YAML
+PUBLIC_URL="$(detect_public_url)"
+PUBLIC_ORIGIN="${PUBLIC_URL%/}"
+CURRENT_USER=$(whoami)
+
+# docker-compose.yml 生成（v2: network_mode: host、ローカルイメージ名）
+cat >"$INSTALL_DIR/docker-compose.yml" <<'YAML'
 services:
   backend:
-    image: ${IMAGE_REPO}-backend:${TAG}
-    ports:
-      - "\${BACKEND_PORT}:\${BACKEND_PORT}"
-    extra_hosts:
-      - "host.docker.internal:\${HOST_IP}"
+    image: aoi-terminals-backend:latest
+    network_mode: "host"
     volumes:
-      - "\${BASE_DIR}/.ssh/id_rsa:/app/ssh_key:ro"
+      - "${BASE_DIR}/.ssh/id_rsa:/app/ssh_key:ro"
     environment:
-      PORT: "\${BACKEND_PORT}"
-      ALLOWED_ORIGINS: "\${ALLOWED_ORIGINS}"
-      TERMINAL_TOKEN: "\${TERMINAL_TOKEN}"
-      TERMINAL_LINK_TOKEN_TTL_SECONDS: "\${TERMINAL_LINK_TOKEN_TTL_SECONDS}"
-      TERMINAL_COOKIE_SECURE: "\${TERMINAL_COOKIE_SECURE}"
-      NODE_ENV: "\${BACKEND_NODE_ENV}"
-      TERMINAL_SSH_TARGET: "\${SSH_TARGET}"
+      PORT: "${BACKEND_PORT}"
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS}"
+      TERMINAL_TOKEN: "${TERMINAL_TOKEN}"
+      TERMINAL_LINK_TOKEN_TTL_SECONDS: "${TERMINAL_LINK_TOKEN_TTL_SECONDS}"
+      TERMINAL_COOKIE_SECURE: "${TERMINAL_COOKIE_SECURE}"
+      NODE_ENV: "${BACKEND_NODE_ENV}"
+      TERMINAL_SSH_TARGET: "${SSH_TARGET}"
       TERMINAL_SSH_KEY: "/app/ssh_key"
     restart: unless-stopped
 
   frontend:
-    image: ${IMAGE_REPO}-frontend:${TAG}
+    image: aoi-terminals-frontend:latest
+    network_mode: "host"
     depends_on:
       - backend
-    ports:
-      - "\${FRONTEND_PORT}:\${FRONTEND_PORT}"
-    environment:
-      NODE_ENV: "\${BACKEND_NODE_ENV}"
     restart: unless-stopped
 YAML
 
-# .env は常に上書き（フォーマットを常に最新・正しい状態に保つ）
-# ただし既存のトークンがあれば保持する
-cat >"$BASE_DIR/.env" <<ENV
-AOI_TERMINALS_IMAGE_REPO="${IMAGE_REPO}"
-AOI_TERMINALS_TAG="${TAG}"
-TERMINAL_TOKEN="${TERMINAL_TOKEN}"
-TERMINAL_PUBLIC_BASE_URL="${PUBLIC_BASE_URL}"
-ALLOWED_ORIGINS="${DEFAULT_ALLOWED_ORIGINS},${PUBLIC_ORIGIN}"
-TERMINAL_LINK_TOKEN_TTL_SECONDS="${DEFAULT_LINK_TOKEN_TTL}"
-TERMINAL_COOKIE_SECURE="${DEFAULT_COOKIE_SECURE}"
+# .env 生成
+cat >"$INSTALL_DIR/.env" <<ENV
+TERMINAL_TOKEN="${TOKEN}"
+TERMINAL_PUBLIC_BASE_URL="${PUBLIC_URL}"
+ALLOWED_ORIGINS="http://localhost:${FRONTEND_PORT},http://127.0.0.1:${FRONTEND_PORT},${PUBLIC_ORIGIN}"
+TERMINAL_LINK_TOKEN_TTL_SECONDS="300"
+TERMINAL_COOKIE_SECURE="0"
 BACKEND_NODE_ENV="production"
-BACKEND_PORT="${BACKEND_PORT_DEFAULT}"
-FRONTEND_PORT="${FRONTEND_PORT_DEFAULT}"
+BACKEND_PORT="${BACKEND_PORT}"
+FRONTEND_PORT="${FRONTEND_PORT}"
+BASE_DIR="${INSTALL_DIR}"
+SSH_TARGET="${CURRENT_USER}@localhost"
 ENV
-echo "[aoi-terminals] 📝 Updated environment file: $BASE_DIR/.env"
 
-# 5. プロダクト用ツールとスクリプトの配置
-# ---------------------------------------------------------
-echo "[aoi-terminals] 🚚 Downloading production scripts..."
+# スクリプト配置
+# ローカルリポジトリから実行された場合はコピー、そうでなければGitHubからダウンロード
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
+if [[ -n "$SCRIPT_DIR" ]] && [[ -f "$SCRIPT_DIR/print-share-qr.sh" ]] && [[ -f "$SCRIPT_DIR/production-cli.sh" ]]; then
+  echo "[aoi-terminals] 📁 ローカルリポジトリからスクリプトをコピー..."
+  cp "$SCRIPT_DIR/print-share-qr.sh" "$INSTALL_DIR/print-share-qr.sh"
+  cp "$SCRIPT_DIR/production-cli.sh" "$INSTALL_DIR/aoi-terminals"
+else
+  echo "[aoi-terminals] 📥 GitHubからスクリプトをダウンロード..."
+  REPO_RAW="https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts"
+  curl -fsSL "$REPO_RAW/print-share-qr.sh" > "$INSTALL_DIR/print-share-qr.sh"
+  curl -fsSL "$REPO_RAW/production-cli.sh" > "$INSTALL_DIR/aoi-terminals"
+fi
+chmod +x "$INSTALL_DIR/print-share-qr.sh" "$INSTALL_DIR/aoi-terminals"
 
-# QR表示スクリプト
-curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/print-share-qr.sh" > "$BASE_DIR/print-share-qr.sh"
-chmod +x "$BASE_DIR/print-share-qr.sh"
-
-# プロダクト専用CLI (aoi-terminals)
-curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/production-cli.sh" > "$BASE_DIR/aoi-terminals"
-chmod +x "$BASE_DIR/aoi-terminals"
-
-# Windows用ランチャー (windows-run.bat)
-curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/windows-run.bat" > "$BASE_DIR/windows-run.bat"
-
-# Windows Port Forwarding スクリプト
-curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-terminal-system/main/scripts/setup-port-forwarding.ps1" > "$BASE_DIR/setup-port-forwarding.ps1"
-
-
-# 6. セットアップ完了と起動
-# ---------------------------------------------------------
-echo "---"
-echo "✅ Installation Success!"
-echo "---"
-echo "Environment: PRODUCTION"
-echo "Base Directory: $BASE_DIR"
-echo "---"
-
-# 初回起動は行わない（ユーザーに委ねる）
-# echo "🚀 Starting the system for the first time..."
-# bash "$BASE_DIR/aoi-terminals" start < /dev/null
+# Dockerイメージ: ローカルビルド済みがあればそのまま使用、なければGHCRから取得
+if docker image inspect "aoi-terminals-backend:latest" >/dev/null 2>&1 && \
+   docker image inspect "aoi-terminals-frontend:latest" >/dev/null 2>&1; then
+  echo "[aoi-terminals] ✅ ローカルビルド済みイメージを使用"
+else
+  echo "[aoi-terminals] 📥 GHCRからDockerイメージを取得..."
+  docker pull "${GHCR_REPO}-backend:${TAG}"
+  docker pull "${GHCR_REPO}-frontend:${TAG}"
+  docker tag "${GHCR_REPO}-backend:${TAG}" "aoi-terminals-backend:latest"
+  docker tag "${GHCR_REPO}-frontend:${TAG}" "aoi-terminals-frontend:latest"
+fi
 
 echo ""
-echo "✅ Installation Success!"
-echo "---------------------------------------------------"
-echo "To start the system, run:"
-echo "  $BASE_DIR/aoi-terminals start"
-echo "---------------------------------------------------"
-
+echo "✅ インストール完了！"
+echo "---"
+echo "📁 インストール先: $INSTALL_DIR"
 echo ""
-echo "💡 Usage:"
-echo "   $BASE_DIR/aoi-terminals [start|stop|logs|info|qr]"
+echo "起動: $INSTALL_DIR/aoi-terminals start"
+echo "停止: $INSTALL_DIR/aoi-terminals stop"
 echo ""
