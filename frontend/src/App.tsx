@@ -13,6 +13,7 @@ export default function App() {
   const incomingBufferRef = useRef<string[]>([]);
   const [incomingTick, setIncomingTick] = useState(0);
   const lastInputRef = useRef<{ data: string; timestamp: number } | null>(null);
+  const lastTerminalSizeRef = useRef<{ cols: number; rows: number } | null>(null);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [isTmuxPanelOpen, setIsTmuxPanelOpen] = useState(false);
   const baselineViewportRef = useRef<number | null>(null);
@@ -297,6 +298,11 @@ export default function App() {
     onOpen: () => {
       setWsErrorMessage(null);
       console.log('WebSocket connection opened');
+      // WS接続確立時にターミナルサイズを再送（初回fit時はWS未接続で消失するため）
+      const size = lastTerminalSizeRef.current;
+      if (size) {
+        sendMessage({ type: 'resize', cols: size.cols, rows: size.rows });
+      }
     },
     onClose: () => console.log('WebSocket connection closed'),
     onError: (event) => console.error('WebSocket error:', event),
@@ -322,6 +328,7 @@ export default function App() {
   }, [sendMessage]);
 
   const handleTerminalResize = useCallback((cols: number, rows: number) => {
+    lastTerminalSizeRef.current = { cols, rows };
     sendMessage({ type: 'resize', cols: cols, rows: rows });
   }, [sendMessage]);
 
