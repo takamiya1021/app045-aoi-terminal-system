@@ -66,7 +66,7 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
       </td>
       <td width="50%">
         <img src="frontend/public/screenshot-terminal.png" alt="Aoi-Terminals ターミナル操作画面" width="100%">
-        <p align="center"><em>ターミナル操作とtmuxコントロールの様子</em></p>
+        <p align="center"><em>ターミナル操作の様子</em></p>
       </td>
     </tr>
   </table>
@@ -82,7 +82,7 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
 ### 主な機能
 
 - 📱 **モバイル最適**: 日本語IMEに強く、Androidでも入力しやすい設計
-- 🧩 **tmux操作UI**: 分割・切替などをボタンで操作（タッチ前提でも迷いにくい）
+- 🧩 **操作パネル**: Esc・Tab・Enter・Ctrl+C等の特殊キーやIME入力をタッチ操作で実行
 - 🔗 **ワンタイムQRログイン**: セキュリティのため、リンクは5分間のみ有効
 - 🔐 **セキュア認証**: ランダムトークン自動生成、HTTPSでのCookie Secure対応
 - 🎨 **モダンUI**: Claude Code on the Web風のクリーンなデザイン

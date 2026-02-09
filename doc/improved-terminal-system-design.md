@@ -49,7 +49,6 @@
 │  │  ├─ components/                                      │  │
 │  │  │  ├─ Terminal.tsx      - xterm.js統合              │  │
 │  │  │  ├─ ControlPanel.tsx  - 操作キー・矢印・IME      │  │
-│  │  │  ├─ TmuxPanel.tsx     - tmuxプレフィックスキー送信│  │
 │  │  │  ├─ ShareLinkModal.tsx- QRコード共有リンク        │  │
 │  │  │  ├─ TextInputModal.tsx- 日本語長文入力            │  │
 │  │  │  ├─ Layout.tsx        - 全体レイアウト            │  │
@@ -155,23 +154,25 @@ Node.js ← pty.onData
 （以降、通常のキー入力フローと同じ）
 ```
 
-#### 2.2.4 tmux操作フロー（v3方式）
+#### 2.2.4 tmux操作（透過的動作）
+
+tmuxはバックエンドで透過的に動作しており、ユーザーがtmux操作を意識する必要はない。
 
 ```
-ブラウザ TmuxPanel.tsx
-  ↓ ボタンクリック（例: "New Window (c)"）
-  ↓ onSendKey('\x02c')  ← Ctrl+B(0x02) + 'c' をまとめて送信
-  ↓ WebSocket.send({ type: 'input', data: '\x02c' })
+バックエンド（SSH接続時）
+  ↓ tmux new-session -A -s <セッション名>
+  ↓ tmuxセッション内でbashが起動
   ↓
-Node.js WebSocket Server
-  ↓ ptyManager.write(sessionId, '\x02c')
+ユーザー操作
+  ↓ ターミナルに直接キー入力（通常のbash操作）
+  ↓ tmuxはセッション維持のためにバックグラウンドで動作
   ↓
-PTY → SSH → tmux
-  ↓ tmuxがプレフィックスキー + 操作キーとして解釈
-  ↓ 新規ウィンドウ作成
+tmux操作が必要な場合
+  ↓ ユーザーがターミナル上で直接 Ctrl+B を入力
+  ↓ 通常のtmuxキーバインドとして動作
 ```
 
-**v1との違い**: v1ではバックエンドのtmux-helper.tsが`tmux new-window`等のコマンドを直接実行していた。v3ではフロントエンドからtmuxプレフィックスキー（Ctrl+B = `\x02`）+ 操作キーをWebSocket経由で直接送信する。バックエンド側にtmux専用のロジックはない。
+**v3からの変更**: v3ではTmuxPanel UIからtmuxプレフィックスキーをボタン操作で送信していた。v4ではTmuxPanelを削除し、tmuxはバックエンドでセッション維持のために透過的に動作する。ユーザーは通常tmuxの存在を意識せずにbashを操作する。必要に応じてターミナル上で直接Ctrl+B等のtmuxキーバインドを入力することも可能。
 
 #### 2.2.5 共有リンク（ワンタイムトークン + QR）
 
@@ -204,7 +205,6 @@ frontend/src/
 ├─ components/
 │  ├─ Terminal.tsx         - xterm.js統合（tick+drain出力、IME対応）
 │  ├─ ControlPanel.tsx     - 基本コントロール（Esc/Tab/Enter/^C/^D/^Z/矢印/IME）
-│  ├─ TmuxPanel.tsx        - tmux操作パネル（プレフィックスキー送信方式）
 │  ├─ ShareLinkModal.tsx   - 共有リンク（QR）表示モーダル
 │  ├─ TextInputModal.tsx   - 日本語長文入力モーダル
 │  ├─ Layout.tsx           - 全体レイアウト（ヘッダー/フッター/ランタイムエラー表示）
@@ -276,38 +276,9 @@ interface ControlPanelProps {
 }
 ```
 
-#### TmuxPanel.tsx（tmux操作）
+#### TmuxPanel.tsx（削除済み）
 
-**責務**:
-- tmux基本操作ボタン（プレフィックスキー + 操作キーをまとめて送信）
-- 展開/折りたたみトグル
-- 展開時はControlPanelと同等の操作キー・矢印キーも表示
-- ControlPanelは展開時に非表示（排他表示）
-
-**Props**:
-```typescript
-interface TmuxPanelProps {
-  isOpen: boolean;
-  onToggle: () => void;
-  onSendKey: (key: string) => void;
-  onOpenTextInput?: () => void;
-}
-```
-
-**tmux操作マッピング**:
-
-| ボタン | 送信データ | tmux動作 |
-|--------|-----------|----------|
-| New Window (c) | `\x02c` | 新規ウィンドウ作成 |
-| Next Window (n) | `\x02n` | 次のウィンドウへ |
-| Prev Window (p) | `\x02p` | 前のウィンドウへ |
-| Sessions (s) | `\x02s` | セッション一覧表示 |
-| Split V (%) | `\x02%` | 縦分割 |
-| Split H (") | `\x02"` | 横分割 |
-| Swap Pane (o) | `\x02o` | 次のペインへ |
-| Zoom (z) | `\x02z` | ペインズーム |
-| Scroll ([) | `\x02[` | コピーモード |
-| Detach (d) | `\x02d` | tmuxデタッチ |
+v3で実装されたtmux操作パネルは、v4で削除された。tmuxはバックエンドで透過的にセッション維持のために動作しており、ユーザーがtmux操作を意識する必要がないため。ControlPanelのみで操作が完結する。
 
 #### ShareLinkModal.tsx（共有リンク）
 
@@ -659,7 +630,7 @@ Stage 2 (runtime): node:20 + tmux/bash/openssh-client → node dist/server.js
 ┌───────────────────────────────────────────────────────┐
 │  Header                                                │
 │  ┌─────────────┬──────────────────────────────────┐   │
-│  │ Aoi-Terminals│          [+] [全画面] [QR]       │   │
+│  │ Aoi-Terminals│              [全画面] [QR]       │   │
 │  └─────────────┴──────────────────────────────────┘   │
 ├───────────────────────────────────────────────────────┤
 │                                                       │
@@ -672,20 +643,8 @@ Stage 2 (runtime): node:20 + tmux/bash/openssh-client → node dist/server.js
 │  └─────────────────────────────────────────────────┘ │
 │                                                       │
 ├───────────────────────────────────────────────────────┤
-│  Control Panel / TmuxPanel（排他表示）                 │
+│  Control Panel（常時表示）                             │
 │  ┌───────────────────────────────────────────────┐   │
-│  │ [Open tmux Panel]                              │   │
-│  │ ─── ControlPanel（tmux閉時のみ表示）───        │   │
-│  │ [Esc] [Tab] [Enter] [IME]  [  ▲  ]            │   │
-│  │ [^C]  [^D]  [^Z]          [◀ ▼ ▶]            │   │
-│  └───────────────────────────────────────────────┘   │
-│  ─── TmuxPanel展開時 ───                             │
-│  ┌───────────────────────────────────────────────┐   │
-│  │ [Close tmux Panel]                             │   │
-│  │ [New Window(c)] [Next(n)] [Prev(p)]            │   │
-│  │ [Sessions(s)] [Split V(%)] [Split H(")]        │   │
-│  │ [Swap Pane(o)] [Zoom(z)] [Scroll([)] [Detach]  │   │
-│  │ ─── 操作キー + 矢印キー ───                    │   │
 │  │ [Esc] [Tab] [Enter] [IME]  [  ▲  ]            │   │
 │  │ [^C]  [^D]  [^Z]          [◀ ▼ ▶]            │   │
 │  └───────────────────────────────────────────────┘   │
@@ -697,13 +656,12 @@ Stage 2 (runtime): node:20 + tmux/bash/openssh-client → node dist/server.js
 ### 10.3 モバイル対応
 
 - **仮想キーボード検知**: visualViewport APIで高さ変化を監視（threshold: 120px）
-- **キーボード表示時**: ControlPanel/TmuxPanelを非表示にしてターミナル領域を確保
+- **キーボード表示時**: ControlPanelを非表示にしてターミナル領域を確保
 - **スクロール抑制**: キーボード表示中はbody/htmlのoverflow:hidden、touchAction:noneを設定
 - **ビューポート追従**: Layout.tsxがvisualViewport.heightに応じてコンテナ高さを動的調整
 
 ### 10.4 アニメーション
 
-- **tmuxパネル展開/折りたたみ**: Tailwind transitionで切り替え
 - **ボタンホバー**: transition-colors
 - **認証画面**: グラデーションアニメーション、グロー効果、フローティング
 
@@ -734,7 +692,7 @@ node-ptyが利用できない環境では、FallbackSessionクラスが簡易シ
 ### 12.1 テストレベル
 
 - **単体テスト（Jest + React Testing Library）**:
-  - コンポーネント単位のテスト（Terminal, ControlPanel, TmuxPanel等）
+  - コンポーネント単位のテスト（Terminal, ControlPanel等）
   - hooksのテスト（useWebSocket）
   - バックエンドモジュールのテスト（auth, pty-manager, server, websocket, types, config）
 - **手動テスト**:

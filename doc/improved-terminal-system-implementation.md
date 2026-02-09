@@ -63,7 +63,7 @@
 | Phase 4 | WebSocket統合 | 6時間 | 32時間 | ✅ 完了 |
 | Phase 5 | 日本語IME対応 | 5時間 | 37時間 | ✅ 完了 |
 | Phase 6 | コントロールパネル | 6時間 | 43時間 | ✅ 完了 |
-| Phase 7 | tmux操作パネル | 5時間 | 48時間 | ✅ 完了 |
+| Phase 7 | tmux操作パネル | 5時間 | 48時間 | ✅ 完了→v4削除 |
 | Phase 8 | セッション管理UI | - | - | 🗑️ 削除済み |
 | Phase 9 | 全画面モード・QR共有 | 3時間 | 51時間 | ✅ 完了 |
 | Phase 10 | UI洗練・デザイン調整 | 5時間 | 56時間 | ✅ 完了 |
@@ -303,13 +303,13 @@ WebSocketサーバーが起動し、接続テストが通る
 - [x] **Green**: メインページ実装
   - `frontend/src/App.tsx` 作成（Viteエントリポイント）
   - `frontend/src/main.tsx` でReactDOM.createRootによるマウント
-  - Layout + Terminal + ControlPanel + TmuxPanel統合
+  - Layout + Terminal + ControlPanel統合（TmuxPanelはv4で削除）
   - 認証フロー（トークン入力 → /auth → Cookie設定 → WebSocket接続）
   - URLパラメータによる自動ログイン（`/?token=...`）
 
 - [x] **Refactor**: モバイル対応
   - 仮想キーボード検出（VisualViewport API）
-  - キーボード展開時にControlPanel/TmuxPanelを非表示化
+  - キーボード展開時にControlPanelを非表示化
   - スマホでの二重イベント発火防止（50ms以内の同一データをスキップ）
 
 **実装メモ**:
@@ -448,7 +448,7 @@ WebSocketサーバーが起動し、接続テストが通る
 
 ---
 
-## Phase 7: tmux操作パネル（✅ 完了）
+## Phase 7: tmux操作パネル（✅ 完了 → v4で削除）
 
 ### マイルストーン
 tmux操作ボタンが動作し、プレフィックスキー送信でtmuxコマンドが実行される
@@ -479,6 +479,11 @@ tmux操作ボタンが動作し、プレフィックスキー送信でtmuxコマ
 - バックエンドの`tmux-helper.ts`は削除済み。
 - スマホではキーボードを開かずに1タップでtmux操作が完結するのが利点。
 
+**v4での削除**:
+- TmuxPanelはv4でApp.tsxから削除された（ファイルは残存するが未使用）
+- 削除理由: tmuxはセッション維持のためだけに使用しており、ユーザーがtmux操作を直接行う必要がなかった
+- 現在はControlPanelのみが常時表示される構成
+
 ---
 
 ## Phase 8: セッション管理UI（🗑️ 削除済み）
@@ -487,7 +492,7 @@ tmux操作ボタンが動作し、プレフィックスキー送信でtmuxコマ
 
 v1で計画していた`SessionManager.tsx`コンポーネント（tmuxウィンドウ一覧表示・切り替えUI）は実装を見送り、削除された。
 
-**代替手段**: tmux操作パネル（Phase 7）の `Sessions (s)` ボタンがtmuxのセッション選択画面を呼び出す。tmux自体のUIでウィンドウ一覧・切り替えが可能なため、専用のフロントエンドUIは不要と判断した。
+**代替手段**: v3ではtmux操作パネル（Phase 7）のSessions (s)ボタンで代用していたが、v4でTmuxPanel自体も削除された。tmuxはバックエンドで透過的にセッション維持のために動作しており、ユーザーがtmux操作を意識する必要がない。
 
 削除されたファイル:
 - `frontend/src/components/SessionManager.tsx`（未実装のまま削除）
@@ -658,7 +663,7 @@ Docker Composeで起動し、本番環境で動作確認
 - [x] ターミナル基本操作（入力・表示）
 - [x] 日本語IME入力（compositionイベント処理）
 - [x] 特殊キー操作（Ctrl, Alt, Esc等のControlPanel）
-- [x] tmux操作（プレフィックスキー送信方式でウィンドウ作成・切り替え・分割）
+- [x] ~~tmux操作パネル~~ → v4で削除（tmuxはバックエンドで透過的に動作）
 - [x] 全画面モードの動作
 - [x] QRコード共有リンク
 - [x] URLパラメータ自動ログイン
@@ -691,7 +696,6 @@ frontend/src/
 │   ├── Layout.tsx        # レイアウト（ヘッダー・フッター・VisualViewport対応）
 │   ├── Terminal.tsx       # xterm.jsターミナル（FitAddon・IME対応）
 │   ├── ControlPanel.tsx   # 特殊キーパネル（Esc/Tab/^C/矢印キー等）
-│   ├── TmuxPanel.tsx      # tmux操作パネル（プレフィックスキー送信方式）
 │   ├── TextInputModal.tsx # IMEテキスト入力モーダル
 │   ├── ShareLinkModal.tsx # QR共有リンクモーダル
 │   ├── OfflineIndicator.tsx # オフライン状態表示
@@ -735,6 +739,8 @@ backend/src/
   |                                                  |                        |
   |--- {type:"input", data:"\x02c"} --------------->| (tmux prefix+c)        |
   |                                                  |--- PTY write -->| tmux new-window
+  ※ v4ではTmuxPanel UIが削除されたため、tmuxプレフィックスキーはユーザーが手動でCtrl+Bを入力した場合のみ送信される
+
 ```
 
 ---
