@@ -3,7 +3,6 @@ import Layout from './components/Layout';
 import ControlPanel from './components/ControlPanel';
 import TerminalComponent from './components/Terminal';
 import { useWebSocket } from './hooks/useWebSocket';
-import TmuxPanel from './components/TmuxPanel';
 import TextInputModal from './components/TextInputModal';
 import ShareLinkModal from './components/ShareLinkModal';
 
@@ -15,8 +14,6 @@ export default function App() {
   const lastInputRef = useRef<{ data: string; timestamp: number } | null>(null);
   const lastTerminalSizeRef = useRef<{ cols: number; rows: number } | null>(null);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-  const [isTmuxPanelOpen, setIsTmuxPanelOpen] = useState(false);
-  const baselineViewportRef = useRef<number | null>(null);
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authTokenInput, setAuthTokenInput] = useState('');
@@ -106,52 +103,46 @@ export default function App() {
     [backendHttpBase]
   );
 
+  // キーボード開閉検出
   useEffect(() => {
+    // VirtualKeyboard API（Chrome Android 94+）
+    // overlaysContent=trueにすることでキーボードがレイアウトをリサイズせず
+    // オーバーレイするようになり、geometrychangeで正確に検出可能
+    const vk = 'virtualKeyboard' in navigator
+      ? (navigator as any).virtualKeyboard
+      : null;
+
+    if (vk) {
+      vk.overlaysContent = true;
+      const onGeometryChange = () => {
+        setIsKeyboardOpen(vk.boundingRect.height > 0);
+      };
+      vk.addEventListener('geometrychange', onGeometryChange);
+      return () => {
+        vk.removeEventListener('geometrychange', onGeometryChange);
+        vk.overlaysContent = false;
+      };
+    }
+
+    // フォールバック: visualViewportベースライン方式
+    // ページ読み込み時の高さを記憶し、キーボード開で高さが減ったことを検出
     const threshold = 120;
-    const updateKeyboardState = () => {
-      const viewport = window.visualViewport;
-      const layoutHeight = document.documentElement.clientHeight;
-      const keyboardHeight = viewport ? Math.max(0, layoutHeight - viewport.height - viewport.offsetTop) : 0;
-      setIsKeyboardOpen(keyboardHeight > threshold);
+    let baseline = window.visualViewport?.height ?? window.innerHeight;
+
+    const update = () => {
+      const h = window.visualViewport?.height ?? window.innerHeight;
+      if (h > baseline) baseline = h; // 画面回転時にベースライン更新
+      setIsKeyboardOpen(baseline - h > threshold);
     };
 
-    updateKeyboardState();
-    const viewport = window.visualViewport;
-    viewport?.addEventListener('resize', updateKeyboardState);
-    viewport?.addEventListener('scroll', updateKeyboardState);
-    window.addEventListener('resize', updateKeyboardState);
+    update();
+    const vp = window.visualViewport;
+    vp?.addEventListener('resize', update);
+    if (!vp) window.addEventListener('resize', update);
 
     return () => {
-      viewport?.removeEventListener('resize', updateKeyboardState);
-      viewport?.removeEventListener('scroll', updateKeyboardState);
-      window.removeEventListener('resize', updateKeyboardState);
-    };
-  }, []);
-
-  useEffect(() => {
-    const threshold = 120;
-    const updateKeyboardState = () => {
-      const viewport = window.visualViewport;
-      const currentViewportHeight = viewport?.height ?? window.innerHeight;
-      if (baselineViewportRef.current === null) {
-        baselineViewportRef.current = currentViewportHeight;
-      }
-      const baseline = baselineViewportRef.current ?? currentViewportHeight;
-      const keyboardHeight = Math.max(0, baseline - currentViewportHeight);
-      const nextOpen = keyboardHeight > threshold;
-      setIsKeyboardOpen(nextOpen);
-    };
-
-    updateKeyboardState();
-    const viewport = window.visualViewport;
-    viewport?.addEventListener('resize', updateKeyboardState);
-    viewport?.addEventListener('scroll', updateKeyboardState);
-    window.addEventListener('resize', updateKeyboardState);
-
-    return () => {
-      viewport?.removeEventListener('resize', updateKeyboardState);
-      viewport?.removeEventListener('scroll', updateKeyboardState);
-      window.removeEventListener('resize', updateKeyboardState);
+      vp?.removeEventListener('resize', update);
+      window.removeEventListener('resize', update);
     };
   }, []);
 
@@ -404,15 +395,6 @@ export default function App() {
         isAuthenticated ? (
           <div className="flex gap-1.5 flex-nowrap">
             <button
-              onClick={() => window.open(window.location.origin, '_blank')}
-              className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white rounded-md shadow"
-              title="新しいタブで開く"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
-            <button
               onClick={toggleFullscreen}
               className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white rounded-md shadow"
               title="全画面表示"
@@ -432,7 +414,7 @@ export default function App() {
         ) : null
       }
     >
-      <div className="flex flex-col h-full bg-slate-900 min-h-0">
+      <div className="flex flex-col h-full bg-slate-900 min-h-0 kb-inset">
         <div className="flex-grow w-full p-2 md:p-4 flex overflow-hidden" data-testid="terminal-container">
           <div className="w-full h-full rounded-lg border border-slate-700 shadow-2xl relative overflow-hidden">
             {isAuthenticated ? (
@@ -538,13 +520,8 @@ export default function App() {
           </div>
         </div>
         {isAuthenticated && !isKeyboardOpen && (
-          <div className="flex flex-col border-t border-slate-700 bg-slate-800">
-            {!isTmuxPanelOpen && (
-              <div data-testid="control-panel">
-                <ControlPanel onSendKey={handleControlPanelKey} onOpenTextInput={openTextInput} />
-              </div>
-            )}
-            <TmuxPanel isOpen={isTmuxPanelOpen} onToggle={() => setIsTmuxPanelOpen(!isTmuxPanelOpen)} onSendKey={handleControlPanelKey} onOpenTextInput={openTextInput} />
+          <div data-testid="control-panel">
+            <ControlPanel onSendKey={handleControlPanelKey} onOpenTextInput={openTextInput} />
           </div>
         )}
       </div>

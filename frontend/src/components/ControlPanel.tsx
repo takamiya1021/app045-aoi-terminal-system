@@ -6,6 +6,14 @@ interface ControlPanelProps {
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({ onSendKey, onOpenTextInput }) => {
+  // ボタンタップ時にぽわーんグローアニメーションを発火
+  const triggerGlow = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const btn = e.currentTarget;
+    btn.classList.remove('btn-glow');
+    void btn.offsetWidth; // リフローで再発火
+    btn.classList.add('btn-glow');
+  };
+
   const handleButtonClick = (key: string) => {
     onSendKey(key);
   };
@@ -13,8 +21,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSendKey, onOpenTextInput 
   const renderActionButton = (label: string, onClick: () => void, uniqueKey: string, ariaLabel?: string) => (
     <button
       key={uniqueKey}
-      className="px-3 py-1 bg-slate-700 text-slate-200 rounded-md hover:bg-slate-600 active:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-slate-900 text-sm font-mono flex-grow min-h-[36px] flex items-center justify-center transition-colors"
-      onClick={onClick}
+      className="px-3 py-1 bg-slate-700 text-slate-200 rounded-md hover:bg-slate-600 active:bg-slate-500 focus:outline-none text-sm font-mono flex-grow min-h-[36px] flex items-center justify-center transition-colors"
+      onClick={(e) => { triggerGlow(e); onClick(); }}
+      onAnimationEnd={(e) => e.currentTarget.classList.remove('btn-glow')}
       aria-label={ariaLabel || label}
       type="button"
     >
@@ -25,8 +34,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSendKey, onOpenTextInput 
   const renderButton = (label: string, keyToSend: string, uniqueKey: string, ariaLabel?: string) => (
     <button
       key={uniqueKey}
-      className="px-3 py-1 bg-slate-700 text-slate-200 rounded-md hover:bg-slate-600 active:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-slate-900 text-sm font-mono flex-grow min-h-[36px] flex items-center justify-center transition-colors"
-      onClick={() => handleButtonClick(keyToSend)}
+      className="px-3 py-1 bg-slate-700 text-slate-200 rounded-md hover:bg-slate-600 active:bg-slate-500 focus:outline-none text-sm font-mono flex-grow min-h-[36px] flex items-center justify-center transition-colors"
+      onClick={(e) => { triggerGlow(e); handleButtonClick(keyToSend); }}
+      onAnimationEnd={(e) => e.currentTarget.classList.remove('btn-glow')}
       aria-label={ariaLabel || label}
     >
       {label}
@@ -41,7 +51,15 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSendKey, onOpenTextInput 
           <div className="flex gap-1">
             {renderButton('Esc', '\x1b', 'EscKey')}
             {renderButton('Tab', '\t', 'TabKey')}
-            {renderButton('Enter', '\r', 'EnterKey')}
+            <button
+              key="EnterKey"
+              className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-md active:bg-blue-400 focus:outline-none text-sm font-mono flex-grow min-h-[36px] flex items-center justify-center transition-colors"
+              onClick={(e) => { triggerGlow(e); handleButtonClick('\r'); }}
+              onAnimationEnd={(e) => e.currentTarget.classList.remove('btn-glow')}
+              aria-label="Enter"
+            >
+              Enter
+            </button>
             {onOpenTextInput ? renderActionButton('IME', onOpenTextInput, 'ImeButton', 'Open IME Input') : null}
           </div>
           <div className="flex gap-1">

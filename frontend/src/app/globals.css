@@ -21,10 +21,45 @@ body {
 }
 
 /* モバイルでxtermの入力カーソルが左端に表示される問題を修正 */
-/* モバイルブラウザはopacity:0でもOSネイティブのキャレットを表示するため、 */
-/* caret-colorで透明化する。position移動はキーボードが開かなくなるので不可 */
+/* Chrome Androidはcaret-color単体では効かないため、複数手法で強制非表示 */
 .xterm-helper-textarea {
   caret-color: transparent !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  font-size: 1px !important;
+}
+
+/* ボタンタップ時のぽわーんグロー（2秒かけてフェードアウト） */
+@keyframes btn-glow-fade {
+  0% {
+    box-shadow: 0 0 0 2px #1e293b, 0 0 0 4px #f97316;
+  }
+  100% {
+    box-shadow: 0 0 0 2px transparent, 0 0 0 4px transparent;
+  }
+}
+
+.btn-glow {
+  animation: btn-glow-fade 2s ease-out forwards;
+}
+
+/* 次に押すべきボタンのヒント（オレンジ枠パルス） */
+@keyframes btn-hint-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px #f97316;
+  }
+  50% {
+    box-shadow: 0 0 0 2px #f97316, 0 0 8px 2px #f97316;
+  }
+}
+
+.btn-hint {
+  animation: btn-hint-pulse 1s ease-in-out infinite;
+}
+
+/* VirtualKeyboard API使用時：キーボードがオーバーレイするのでpadding-bottomで補正 */
+.kb-inset {
+  padding-bottom: env(keyboard-inset-bottom, 0px);
 }
 
 @layer utilities {

@@ -210,12 +210,11 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ onData, onResize,
         // IME: xterm内部のtextareaからcompositionイベントがbubbleすることがある
         isComposingRef.current = true;
       }}
-      onCompositionEnd={(e) => {
-        // NOTE: IME入力が xterm の onData に流れない環境があるため、保険で拾う
-        if (!isComposingRef.current) return;
+      onCompositionEnd={() => {
+        // compositionの終了を記録するだけ。テキスト送信はxterm.jsのonDataに任せる。
+        // 以前は保険でここからもテキストを送信していたが、Chrome Androidで
+        // Enterが消費されて2回押し必要になる問題の原因になっていたため削除。
         isComposingRef.current = false;
-        const text = (e as unknown as CompositionEvent).data;
-        if (typeof text === 'string' && text.length > 0) onDataRef.current?.(text);
       }}
     />
   );
