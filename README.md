@@ -4,7 +4,7 @@
 
 **Androidスマホ・タブレットからでも「普段のターミナル」をそのまま扱える、Webベースのリモートターミナル**
 
-[![Next.js][Next-shield]][Next-url]
+[![Vite][Vite-shield]][Vite-url]
 [![React][React-shield]][React-url]
 [![TypeScript][TypeScript-shield]][TypeScript-url]
 [![Node.js][Node-shield]][Node-url]
@@ -76,7 +76,7 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
 
 <div align="center">
   <img src="png/full-architecture-cute.png" alt="システム全体像" width="500">
-  <p><em>GitHub・Docker Desktop・WSL・Ubuntuの連携イメージ</em></p>
+  <p><em>GitHub・Docker・WSL・Ubuntuの連携イメージ</em></p>
 </div>
 
 ### 主な機能
@@ -99,7 +99,9 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
 ### 必須要件
 
 1. **WSL2 + Ubuntu 24.04以降**: 本システムはWSL2上のUbuntu 24.04以降（systemd環境）を前提としています
-2. **Docker**: [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/) が起動していること
+2. **Docker**: WSLネイティブDocker（docker-ce）がインストールされていること
+   - Docker Desktopは不要です。WSL内でdocker-ceを直接使用します
+   - インストール方法: [Docker公式ドキュメント](https://docs.docker.com/engine/install/ubuntu/)
 3. **一般ユーザー（UID 1000推奨）**: `root` ではなく、WSLで最初に作成したユーザー（UID 1000）で実行すること
    - 確認方法: `id -u` を実行して `1000` と表示されればOK
    - **UID 1000以外の場合**: インストール時に「ユーザーIDが1000ではありませんが続行しますか？」という確認メッセージが表示されます。続行を選択すると、コンテナ起動時にSSH鍵を自動的にコピーして権限を調整する処理が行われます
@@ -108,10 +110,10 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
    sudo apt update && sudo apt install -y openssh-server
    sudo service ssh start
    ```
-5. **VPN（Tailscale等）**: スマホ/タブレットとWindows PCが同一VPNネットワーク上にあること
+5. **VPN（Tailscale等）**: スマホ/タブレットとWSL環境が同一VPNネットワーク上にあること
    - [Tailscale](https://tailscale.com/) 推奨（無料プランあり、簡単セットアップ）
-   - スマホ（Android/iOS）と**Windows**の両方にTailscaleをインストール
-   - ⚠️ **注意**: TailscaleはWSLではなく**Windows側**にインストールしてください
+   - スマホ（Android/iOS）と**WSL側**の両方にTailscaleをインストール
+   - ⚠️ **注意**: TailscaleはWindows側ではなく**WSL側**にインストールしてください
    - 同じTailscaleアカウントでログインすれば、プライベートIPで相互接続可能
    - Aoi-Terminalsは、このTailscaleの接続が確立している状態で動作します。
 
@@ -121,7 +123,6 @@ Ubuntu 24.04以降では、systemdがデフォルトで有効化されており�
 
 **症状**：
 - `notepad.exe`や`explorer.exe`などのWindowsコマンドが実行できない
-- Docker Desktopとの連携に問題が発生する
 
 **恒久的な対策**：
 ```bash
@@ -154,7 +155,7 @@ notepad.exe
 - 認証エラー（`Invalid token`）が発生する
 
 **Docker環境と開発環境の違い**：
-- **Docker環境（本番）**：Docker DesktopはWindows側で動作するため、どのWSLからでも**同じコンテナを共有**できます。複数のWSLで本番環境を使う場合は問題ありません。
+- **Docker環境（本番）**：`network_mode: host` で動作するため、各WSLディストリビューションのネットワークを直接使用します。複数のWSLで同時に本番環境を起動すると、ポートが競合します。
 - **開発環境**：各WSLでローカルのNode.jsが直接ポートをリッスンするため、**共有されません**。あるWSLで開発環境を起動していると、他のWSLからは同じポートにアクセスできず、競合が発生します。
 
 **対策**：
@@ -312,9 +313,16 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-ter
 
 ### WSL再起動後にdockerコマンドが見つからない
 
-WSLを再起動（`wsl --shutdown`など）した後、`docker`コマンドが見つからないエラーが発生することがあります。これはDocker DesktopとWSLの統合が一時的に切断されるためです。
+WSLを再起動（`wsl --shutdown`など）した後、`docker`コマンドが見つからない、またはDockerデーモンに接続できないエラーが発生することがあります。これはWSL再起動時にDockerデーモンが自動起動しないためです。
 
-**対処方法**: Docker Desktop を再起動してください（タスクトレイのDockerアイコン → Restart）。
+**対処方法**: WSLターミナルでDockerデーモンを手動で起動してください：
+```bash
+sudo systemctl start docker
+```
+自動起動を有効にする場合：
+```bash
+sudo systemctl enable docker
+```
 
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 
@@ -328,7 +336,7 @@ WSLを再起動（`wsl --shutdown`など）した後、`docker`コマンドが�
 **対策**: 同じWSLターミナル内でそのコマンドを実行する
 
 **現象**: スマホから接続できない<br>
-**対策**: Docker Desktop for Windowsが起動しているか確認する。Tailscaleが接続されているか確認する（両方ともWindows側のGUIで確認）
+**対策**: WSL内でDockerコンテナが起動しているか確認する（`docker ps`）。TailscaleがWSL側で接続されているか確認する（`tailscale status`）
 
 **現象**: 上記で解決しない<br>
 **対策**: このREADMEをClaude CodeなどのAIに渡して質問する（本ドキュメント自体がAIで作成されています）
@@ -347,8 +355,8 @@ WSLを再起動（`wsl --shutdown`など）した後、`docker`コマンドが�
 あおいさん - [@takamiya1021](https://github.com/takamiya1021)
 
 <!-- MARKDOWN LINKS & IMAGES -->
-[Next-shield]: https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js&logoColor=white
-[Next-url]: https://nextjs.org/
+[Vite-shield]: https://img.shields.io/badge/Vite-6-646CFF?style=for-the-badge&logo=vite&logoColor=white
+[Vite-url]: https://vite.dev/
 [React-shield]: https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black
 [React-url]: https://reactjs.org/
 [TypeScript-shield]: https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white

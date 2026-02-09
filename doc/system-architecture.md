@@ -1,32 +1,85 @@
-# Aoi-Terminals システム構造図
+# Aoi-Terminals システム構造図（v2/v3）
 
-## 1. 直感的なシステム配置図（ポンチ絵）
+## 1. 直感的なシステム配置図
 
-### アーキテクチャ全体像とデータフロー（画用紙風イラスト版）
-お嬢の仰った「GHCRから降ってきて、Windowsを通り、WSL内のUbuntuとEngineに分かれる」という大筋の流れを、温かみのあるイラストにしたで！
+### アーキテクチャ全体像とデータフロー
 
-![システムアーキテクチャ全体像とデータフロー](file:///home/ustar-wsl-2-2/.gemini/antigravity/brain/fd5f10b7-3317-424e-922b-57ca5f483f1d/full_architecture_gayoshi_nested_jp_1766661451492.png)
+お嬢のシステムは、**WSL2の中で全てが完結する**構成になっとるで。Windows側に必要なソフトウェアは何もない。Docker DesktopもTailscaleアプリも不要や。WSLの中だけで、docker-ce・Tailscale・SSH・bashが全部動いとる。
 
-*   **GitHub / GHCR**: Windowsの外の外。ここから「設定ファイル」と「コンテナイメージ」のセットが降ってくる。
-*   **Windows OS**: PC全体の土台。
-    *   **Docker Desktop for Windows**: Windows側でお嬢が操作する司令塔。ここが WSL2 の中のエンジンを手綱で操っとるんやな。
-*   **WSL (Windows Subsystem for Linux)**: Windowsの中にある専用の実行空間。
-    *   **Ubuntu Distro**: お嬢がいつも bash を叩いてる場所。ここにある `~/.aoi-terminals/` が実質的な現場の司令塔になるで。
-    *   **Docker Engine VM**: Dockerコンテナたちが元気に走る、独立したトレーニングルームみたいな場所や。
-*   **データフロー**: 
-    1.  GHCRからの完成品が、Windows上の Docker Desktop（大きな関所）を通ってお嬢のPCに入ってくる。
-    2.  設定ファイルはお嬢の **Ubuntu** へ、実行体（コンテナ）は **Docker Engine** へと、賢く分配されるんやな。
+```
+┌──────────────────────────────────────────────────┐
+│  お嬢の端末（スマホ / タブレット / PC）          │
+│  ┌──────────────────────────────────────────┐    │
+│  │  Webブラウザ (Vite + React + xterm.js)   │    │
+│  └──────────────┬───────────────────────────┘    │
+└─────────────────┼────────────────────────────────┘
+                  │ HTTP / WebSocket
+                  │ (Tailscale VPN経由)
+                  ▼
+┌──────────────────────────────────────────────────┐
+│  WSL2 Ubuntu                                     │
+│                                                  │
+│  ┌────────────────────────────────────────────┐  │
+│  │  Tailscale（WSL上で直接動作）              │  │
+│  │  → WSLにTailscale IPが付与される           │  │
+│  └────────────────────────────────────────────┘  │
+│                                                  │
+│  ┌────────────────────────────────────────────┐  │
+│  │  docker-ce（WSLネイティブDocker）          │  │
+│  │  network_mode: host                        │  │
+│  │                                            │  │
+│  │  ┌──────────────────────────────────────┐  │  │
+│  │  │ frontend コンテナ (Port 3101)        │  │  │
+│  │  │ nginx → 静的ファイル配信             │  │  │
+│  │  │ (Vite + React + xterm.js ビルド済)   │  │  │
+│  │  └──────────────────────────────────────┘  │  │
+│  │                                            │  │
+│  │  ┌──────────────────────────────────────┐  │  │
+│  │  │ backend コンテナ (Port 3102)         │  │  │
+│  │  │ Express + node-pty + WebSocket       │  │  │
+│  │  │          │                           │  │  │
+│  │  │          │ SSH bridge                │  │  │
+│  │  └──────────┼───────────────────────────┘  │  │
+│  │             │                              │  │
+│  └─────────────┼──────────────────────────────┘  │
+│                ▼                                  │
+│  ┌────────────────────────────────────────────┐  │
+│  │  ホストシェル: bash / tmux                 │  │
+│  │  ~/.aoi-terminals/ (CLI & .env)            │  │
+│  └────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────┘
+```
+
+### 各エリアの役割
+
+1. **お嬢の端末（スマホ / タブレット / PC）**:
+   Webブラウザでアクセスするだけや。Tailscale VPN経由で、WSLの中のnginxに繋がる。xterm.jsがターミナルをレンダリングしてくれるから、日本語IMEもバッチリ動くで。
+
+2. **Tailscale（WSL上で直接動作）**:
+   WSL2の中にTailscaleをインストールしとる。Windows側のTailscaleアプリは不要や。WSL自体にTailscale IPが付与されるから、スマホからそのIPに直接アクセスできるんよ。
+
+3. **docker-ce（WSLネイティブDocker）**:
+   Docker Desktopは使わへん。WSL2の中にdocker-ceを直接インストールして動かしとる。`network_mode: host` やから、コンテナがWSLのネットワークをそのまま共有するんや。`host.docker.internal` みたいな回りくどいことは一切不要やで。
+
+4. **frontendコンテナ（Port 3101）**:
+   Vite + React + xterm.js + Tailwind CSS でビルドした静的ファイルを、nginxで配信しとる。
+
+5. **backendコンテナ（Port 3102）**:
+   Express + node-pty + WebSocket のサーバーや。SSH bridgeでコンテナからWSLホストのbashに接続して、ターミナルセッションを提供しとる。
+
+6. **ホストシェル（bash / tmux）**:
+   お嬢が普段作業する場所や。backendコンテナからSSH経由で繋がってくるんやな。`~/.aoi-terminals/` にCLIツールや設定ファイルが入っとるで。
 
 ---
 
 ## 2. 技術設計図（Mermaid）
 
-お嬢のPC内部での、より正確な階層構造と通信の流れを技術的に表した図や。
+お嬢のWSL内部での、階層構造と通信の流れを技術的に表した図や。Docker DesktopもWindows側のソフトウェアも一切登場せえへん。WSLの中で全部完結しとるのがポイントやで。
 
 ```mermaid
 graph TB
-    subgraph Client ["お嬢の端末 (スマホ/タブレット)"]
-        Browser["ブラウザ (Next.js UI)"]
+    subgraph Client ["お嬢の端末 (スマホ/タブレット/PC)"]
+        Browser["Webブラウザ<br/>(Vite + React + xterm.js)"]
     end
 
     subgraph GHCR ["GitHub Container Registry"]
@@ -34,58 +87,73 @@ graph TB
         GHScripts["CLI Scripts"]
     end
 
-    subgraph Windows ["Windows Host"]
-        DDW["Docker Desktop for Windows"]
-        
-        subgraph WSL ["WSL2 Subsystem (単一のVM・共有カーネル)"]
-            subgraph Ubuntu ["Ubuntu Distro (User)"]
-                Control["~/.aoi-terminals/<br/>(CLI & .env)"]
-                Shell["bash / tmux"]
-            end
-            
-            subgraph DockerEngine ["docker-desktop (Distro)"]
-                Engine["Docker Engine (dockerd)"]
-            end
-            
-            subgraph DockerData ["docker-desktop-data (Distro)"]
-                Storage["ext4.vhdx<br/>(Image/Volume Storage)"]
-            end
+    subgraph WSL2 ["WSL2 Ubuntu（全てここで完結）"]
+        Tailscale["Tailscale<br/>(WSL上で動作・IPを持つ)"]
+
+        subgraph DockerCE ["docker-ce (network_mode: host)"]
+            Frontend["frontend コンテナ<br/>nginx (Port 3101)<br/>静的ファイル配信"]
+            Backend["backend コンテナ<br/>Express + node-pty (Port 3102)<br/>WebSocket"]
+        end
+
+        subgraph Host ["ホスト環境"]
+            Control["~/.aoi-terminals/<br/>(CLI & .env)"]
+            Shell["bash / tmux"]
         end
     end
 
-    %% データフロー（インストール時）
+    %% 外部からのアクセス
+    Browser -- "HTTP (Port 3101)<br/>Tailscale VPN" --> Frontend
+    Browser -- "WebSocket (Port 3102)<br/>Tailscale VPN" --> Backend
+
+    %% インストール時のデータフロー
     GHScripts -- "curl (ダウンロード)" --> Control
-    GHImages -- "docker pull" --> DDW
-    DDW -- "イメージ転送" --> Engine
-    Engine -- "保存" --> Storage
-    
-    %% Ubuntu ⟷ Docker Engine の双方向通信
-    Control -- "docker コマンド<br/>(Docker Socket)" --> Engine
-    Engine -- "SSH (コンテナ→ホスト)" --> Shell
-    
-    %% 動作時の通信
-    Browser -- "HTTPS" --> Engine
-    DDW -- "管理・制御" --> Engine
+    GHImages -- "docker pull" --> DockerCE
+
+    %% Docker管理
+    Control -- "docker compose<br/>(Docker Socket)" --> DockerCE
+
+    %% SSH bridge（コンテナ → ホストbash）
+    Backend -- "SSH bridge<br/>(コンテナ → ホスト)" --> Shell
+
+    %% Tailscale → コンテナへの通信経路
+    Tailscale -. "Tailscale IP で<br/>外部アクセスを受け付け" .-> Frontend
+    Tailscale -. "Tailscale IP で<br/>外部アクセスを受け付け" .-> Backend
 
     %% スタイル
     style Client fill:#f9f,stroke:#333
-    style Windows fill:#e1f5fe,stroke:#01579b
-    style WSL fill:#f1f8e9,stroke:#33691e
-    style Ubuntu fill:#dcedc8,stroke:#33691e
-    style DockerEngine fill:#b3e5fc,stroke:#01579b
-    style DockerData fill:#fff9c4,stroke:#fbc02d
+    style WSL2 fill:#f1f8e9,stroke:#33691e
+    style DockerCE fill:#b3e5fc,stroke:#01579b
+    style Host fill:#dcedc8,stroke:#33691e
+    style Tailscale fill:#e8f5e9,stroke:#2e7d32
 ```
 
+### 通信フローの詳細
 
-### 各エリアの役割：
+1. **外部アクセス（スマホ → WSL）**:
+   - スマホのブラウザから、TailscaleのVPN経由でWSLのIPにアクセス
+   - HTTPリクエスト（Port 3101）はnginxコンテナが受け取って静的ファイルを返す
+   - WebSocket接続（Port 3102）はExpressコンテナが受け取ってターミナルセッションを提供
 
-1.  **Ubuntu Distro (User)**:
-    お嬢が普段 bash や tmux を使って作業する場所や。`install-docker.sh` でダウンロードされる CLI ツールや `.env` 設定ファイルは、ここの `~/.aoi-terminals/` に保存されるで。
-2.  **docker-desktop (Engine)**:
-    Docker の「心臓部（エンジン）」が動く専用環境や。Windows 上の Docker Desktop と連携して、コンテナの命を管理しとる。
-3.  **docker-desktop-data (Storage)**:
-    コンテナの倉庫（仮想ディスク）や。お嬢が `docker pull` したイメージは、ここに着地するんよ。
-4.  **GitHub / GHCR**:
-    雲の上の供給元や。ここからデータが降ってくるんやな。
+2. **コンテナ ↔ ホスト通信（SSH bridge）**:
+   - backendコンテナからWSLホストのbashへ、SSH鍵認証で接続
+   - `network_mode: host` やから、`localhost` でそのまま繋がる（`host.docker.internal` は不要）
+   - node-ptyがPTYセッションを管理して、xterm.jsに中継する
 
-この構造のおかげで、重たいデータと使いやすい設定ファイルが、お嬢のPCの中で賢く共存できとるんよ。
+3. **インストール時のフロー**:
+   - GHCRからコンテナイメージを `docker pull`
+   - CLIスクリプトは `curl` でダウンロードして `~/.aoi-terminals/` に配置
+   - `docker compose` コマンドで起動（Docker Desktop不要、直接 `docker` コマンド）
+
+### v1からの主な変更点
+
+| 項目 | v1 | v2/v3 |
+|------|-----|-------|
+| **Docker** | Docker Desktop for Windows | WSLネイティブ docker-ce |
+| **Tailscale** | Windows側で動作 | WSL内で直接動作 |
+| **フロントエンド** | Next.js (SSR) | Vite + React (静的ビルド + nginx) |
+| **ネットワーク** | ポートフォワーディング | `network_mode: host` |
+| **コンテナ→ホスト** | `host.docker.internal` | `localhost`（SSH bridge） |
+| **Windows側の依存** | Docker Desktop必須 | 不要（WSLで全て完結） |
+| **docker-desktop distro** | 存在する | 存在しない |
+
+この構成のおかげで、Windows側に何もインストールせんでも、WSLの中だけで全部動くんよ。シンプルで、お嬢にとっても管理しやすい構成になっとるで。

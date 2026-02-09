@@ -1,4 +1,4 @@
-# Aoi-Terminals 要件定義書 v2
+# Aoi-Terminals 要件定義書 v3
 
 ## 1. このアプリの本質
 
@@ -55,7 +55,7 @@ Dockerコンテナの中で起動したbashは、コンテナ内のbashであっ
 ```
 スマホ/PC（Webブラウザ）
     ↕ HTTP / WebSocket
-フロントエンド: 静的HTML/CSS/JS + xterm.js（Dockerコンテナ）
+フロントエンド: Vite + React 18 + TypeScript + xterm.js（ビルド後は静的ファイル、Dockerコンテナのnginxで配信）
     ↕ WebSocket
 バックエンド: Express + node-pty（Dockerコンテナ）
     ↕ SSH bridge
@@ -78,6 +78,7 @@ Dockerコンテナの中で起動したbashは、コンテナ内のbashであっ
 
 - **WebSocketベース接続**: xterm.js（フロントエンド） ↔ WebSocket ↔ node-pty（バックエンド）
 - **基本機能**: 文字入力・表示、カーソル移動、カラー表示、リサイズ対応
+- **tmux自動接続**: バックエンドがSSH先またはローカルで `tmux new-session -A` を実行し、既存セッションへの再接続をサポート
 
 ### 5.3 日本語入力（核心機能）
 
@@ -89,9 +90,39 @@ Dockerコンテナの中で起動したbashは、コンテナ内のbashであっ
 
 - クリーンでモダンなダークモードデザイン
 - モバイルファースト（タッチ操作優先）
-- コントロールパネル: 特殊キーボタン（Ctrl, Alt, Esc, Tab等）、ショートカットボタン
+- **コントロールパネル（ControlPanel）**: 特殊キーボタン（Esc, Tab, Enter, ^C, ^D, ^Z）、矢印キー（逆T字配置）、IME入力ボタン
+- **tmux操作パネル（TmuxPanel）**: スマホからtmux操作をGUIで行うためのパネル（詳細は5.5参照）
 - 全画面モード対応
 - QRコード共有モーダル
+
+### 5.5 tmux操作パネル（TmuxPanel）
+
+スマホでtmuxのプレフィックスキー（Ctrl+B）を手打ちするのは非現実的なため、GUIボタンで1タップ操作できるパネルを提供する。
+
+**実装方式**:
+- フロントエンドの各ボタンがtmuxプレフィックスキー `\x02`（Ctrl+B）+ 操作キーをWebSocket経由で直接送信
+- バックエンド側にtmux専用のロジックは不要（v1のtmux-helper.tsは廃止済み）
+- 通常のキー入力と同じ経路（WebSocket → node-pty → シェル）でtmuxに到達する
+
+**提供する操作ボタン**:
+
+| ボタン | 送信キー | 機能 |
+|--------|----------|------|
+| New Window (c) | `\x02` + `c` | 新規ウィンドウ作成 |
+| Next Window (n) | `\x02` + `n` | 次のウィンドウへ移動 |
+| Prev Window (p) | `\x02` + `p` | 前のウィンドウへ移動 |
+| Sessions (s) | `\x02` + `s` | セッション一覧表示 |
+| Split V (%) | `\x02` + `%` | 垂直分割 |
+| Split H (") | `\x02` + `"` | 水平分割 |
+| Swap Pane (o) | `\x02` + `o` | ペイン切り替え |
+| Zoom (z) | `\x02` + `z` | ペインズーム切替 |
+| Scroll ([) | `\x02` + `[` | スクロール（コピー）モード |
+| Detach (d) | `\x02` + `d` | セッションのデタッチ |
+
+**パネル構成**:
+- 折りたたみ可能（Open/Close tmux Panel ボタンで切替）
+- tmux操作ボタン群の下に、操作キー（Esc, Tab, Enter, ^C, ^D, ^Z）・矢印キー・IMEボタンも配置
+- ControlPanel（tmuxパネル閉時）と同じ操作キー配列を維持し、パネル開閉でレイアウトが変わらない
 
 ## 6. 対応環境
 
@@ -121,9 +152,9 @@ Dockerコンテナの中で起動したbashは、コンテナ内のbashであっ
 - **OpenSSH**: SSH bridge用
 
 ### フロントエンド
-- **静的HTML/CSS/JS**: Next.jsは使わない（SSR不要）
-- **xterm.js**: ターミナルエミュレータ
-- **Tailwind CSS**: スタイリング
+- **Vite 6 + React 18 + TypeScript**: ビルド後は静的ファイルとしてnginxで配信（SSR不要）
+- **xterm.js 5**: ターミナルエミュレータ（@xterm/xterm + @xterm/addon-fit）
+- **Tailwind CSS 3**: スタイリング
 
 ### インフラ
 - **Docker (docker-ce)**: コンテナ化・配布（WSLネイティブDocker）
@@ -151,14 +182,14 @@ curl -L "https://raw.githubusercontent.com/.../install.sh" | bash
 - 初回ロード時間: 3秒以内
 - セキュリティ: XSS対策、トークン漏洩リスク最小化
 
-## 10. v1からの変更履歴
+## 10. 変更履歴
 
 ### v1 → v2 で削除したもの
 
 | 対象 | 理由 |
 |------|------|
-| **Next.js** | SSRもルーティングも不要。静的HTML/CSS/JS + xterm.jsで十分 |
-| **tmux操作GUIボタン** | 過剰な機能。tmuxはターミナル上で直接操作すればよい |
+| **Next.js** | SSRもルーティングも不要。Vite + Reactで静的ビルドし、nginxで配信すれば十分 |
+| **tmux操作GUIボタン** | 過剰な機能と判断し削除（→ v3で復活） |
 
 ### v1 → v2 で変更したもの
 
@@ -167,12 +198,37 @@ curl -L "https://raw.githubusercontent.com/.../install.sh" | bash
 | **Docker環境** | Docker Desktop (Windows) | WSLネイティブDocker (docker-ce) | Windows側の依存を排除、WSL内で完結 |
 | **対応環境** | WSL2 + Ubuntu 24.04限定 | docker-ce + SSH が動く全環境 | アプリの本質に立ち返り不要な制限を撤廃 |
 | **SSH bridge接続先** | `host.docker.internal` | WSLネイティブDocker対応方式 | Docker環境の移行に伴う変更 |
-| **フロントエンド** | Next.js 14 + React | 静的HTML/CSS/JS | 軽量化 |
+| **フロントエンド** | Next.js 14 + React | Vite + React 18 + TypeScript | SSR不要のためNext.jsを廃止、ビルド後は静的ファイル |
 
-## 次のステップ
+### v2 → v3 で復活したもの
 
-1. **Docker環境の移行**: Docker Desktop → WSLネイティブDocker (docker-ce)
-2. **フロントエンドの刷新**: Next.js → 静的HTML/CSS/JS + xterm.js
-3. **tmux操作GUIの削除**: TmuxPanel / SessionManager コンポーネントの除去
-4. **SSH bridge接続先の変更**: WSLネイティブDocker対応
-5. **対応環境の拡大**: Ubuntu限定の前提条件を撤廃、各環境でのテスト
+| 対象 | v2での状態 | v3での復活理由 |
+|------|-----------|---------------|
+| **tmux操作GUIボタン（TmuxPanel）** | 過剰な機能として削除 | スマホでCtrl+Bプレフィックスキーを手打ちするのは非現実的。1タップでtmux操作できるGUIが必要と再判断 |
+
+### v2 → v3 で変更したもの
+
+| 対象 | v1（参考） | v3 | 変更点 |
+|------|-----------|-----|--------|
+| **tmux操作の実装方式** | バックエンドのtmux-helper.tsがtmuxコマンドを実行 | フロントエンドからプレフィックスキー（`\x02` + 操作キー）をWebSocket経由で直接送信 | バックエンドにtmux専用ロジックが不要になり、アーキテクチャがシンプル化 |
+| **UIパネル構成** | ControlPanelのみ | ControlPanel（基本操作）+ TmuxPanel（tmux操作 + 基本操作） | tmuxパネル開閉で操作キー配列が変わらないよう統一設計 |
+
+### v2 → v3 で変更なし
+
+| 対象 | 備考 |
+|------|------|
+| **フロントエンド技術スタック** | Vite + React 18 + TypeScript + Tailwind CSS（v2と同一） |
+| **Docker構成** | WSLネイティブDocker（docker-ce）、network_mode: host |
+| **SSH bridge** | コンテナ → ホストbash接続方式 |
+| **認証・セキュリティ** | トークン認証 + QRコードログイン |
+
+## 11. 実装状況
+
+v3時点で以下は全て実装完了済み:
+
+- [x] Docker環境の移行: Docker Desktop → WSLネイティブDocker (docker-ce)
+- [x] フロントエンドの刷新: Next.js → Vite + React 18 + TypeScript
+- [x] SSH bridge接続先の変更: WSLネイティブDocker対応
+- [x] 対応環境の拡大: Ubuntu限定の前提条件を撤廃
+- [x] tmux操作GUIパネルの復活（プレフィックスキー送信方式で再実装）
+- [x] ControlPanel / TmuxPanel の統一的な操作キー配列
