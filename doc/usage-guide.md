@@ -1,27 +1,37 @@
-# Aoi-Terminals 使用方法ガイド（画用紙風イラスト版）
+# Aoi-Terminals 使用方法ガイド
 
-お嬢が Aoi-Terminals を使って WSL にアクセスするまでのステップを、画用紙に描いたような柔らかく温かいイラストで解説するで！
+スマホから WSL にアクセスするまでの手順。
 
-![使用方法の画用紙風イラスト](file:///home/ustar-wsl-2-2/.gemini/antigravity/brain/fd5f10b7-3317-424e-922b-57ca5f483f1d/usage_flow_drawing_paper_jp_1766658670515.png)
+## アクセスまでの 4 ステップ
 
-### アクセスまでの 4 ステップ：
+1. **Start コマンド実行（PC）**
+   WSL ターミナルで `~/.aoi-terminals/aoi-terminals start` を実行。
+   WSL 上の Tailscale IP を自動検出し、ログイン用 QR コードを表示する。
 
-1.  **Start コマンド実行！ (PC)**
-    WSL(Ubuntu) の `~/.aoi-terminals/` フォルダで `./aoi-terminals start` を実行。
-    システムが Windows 側の Tailscale IP を自動で見つけて、ログイン用のトークンと一緒に QR コードをデカデカと表示するで。
+2. **スマホで QR スキャン（Mobile）**
+   スマホのカメラで QR コードをスキャン。
+   Tailscale IP 入りの URL がブラウザで開く。
 
-2.  **スマホでパシャッ！ (Mobile)**
-    スマホのカメラでその QR コードをスキャン。
-    Tailscale IP の入った特別な URL が読み取られて、ブラウザが立ち上がるんや。
+3. **Tailscale VPN 経由で接続（Network）**
+   スマホと WSL が Tailscale（Tailnet）経由で直接接続。
+   外出先からでも安全に WSL にアクセスできる。
 
-3.  **Tailscale VPN 経由で接続！ (Network)**
-    お嬢のスマホと PC が Tailscale（Tailnet）という秘密のトンネルで繋がるで。
-    場所を選ばず、安全に自宅の WSL にアクセスできる魔法の瞬間やな。
+4. **ターミナル操作開始（Terminal）**
+   ブラウザにターミナル画面が表示されたら成功。
+   スマホから WSL のシェル（bash / tmux）を操作できる。
 
-4.  **WSL 開通！ (Terminal)**
-    ブラウザにターミナル画面が表示されたら成功！
-    スマホから WSL のシェル（bash / tmux）を自由自在に操れるようになるで。
+## コマンド一覧
 
----
-**ヒント:**
-もし繋がらないときは、スマホ側でも Tailscale アプリが「Active」になっとるか確認してみてな！
+| コマンド | 説明 |
+|---------|------|
+| `~/.aoi-terminals/aoi-terminals start` | システム起動 |
+| `~/.aoi-terminals/aoi-terminals stop` | システム停止 |
+| `~/.aoi-terminals/aoi-terminals qr` | QR コード再表示 |
+| `~/.aoi-terminals/aoi-terminals info` | 接続情報表示 |
+| `~/.aoi-terminals/aoi-terminals logs` | ログ表示 |
+
+## トラブルシューティング
+
+- **スマホから繋がらない**: スマホ側の Tailscale アプリが Active か確認
+- **SSH エラー**: WSL で `sudo service ssh start` を実行
+- **古い画面が表示される**: ブラウザのキャッシュをクリア

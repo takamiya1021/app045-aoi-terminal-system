@@ -20,6 +20,13 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* モバイルでxtermの入力カーソルが左端に表示される問題を修正 */
+/* モバイルブラウザはopacity:0でもOSネイティブのキャレットを表示するため、 */
+/* caret-colorで透明化する。position移動はキーボードが開かなくなるので不可 */
+.xterm-helper-textarea {
+  caret-color: transparent !important;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

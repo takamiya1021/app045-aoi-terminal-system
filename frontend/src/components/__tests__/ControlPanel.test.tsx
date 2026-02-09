@@ -11,8 +11,7 @@ describe('ControlPanel Component', () => {
   it('should render various control buttons', () => {
     render(<ControlPanel onSendKey={mockOnSendKey} />);
 
-    // Check for common special keys (Ctrlはtmux操作と統合してTmuxPanelに移動済み)
-    expect(screen.getByText('Alt')).toBeInTheDocument();
+    // Check for common special keys
     expect(screen.getByText('Esc')).toBeInTheDocument();
     expect(screen.getByText('Tab')).toBeInTheDocument();
     expect(screen.getByText('Enter')).toBeInTheDocument();
@@ -28,9 +27,9 @@ describe('ControlPanel Component', () => {
     expect(screen.getByText('^D')).toBeInTheDocument();
   });
 
-  it('should call onSendKey with correct key for Alt button', () => {
+  it('should call onSendKey with correct key for Esc button', () => {
     render(<ControlPanel onSendKey={mockOnSendKey} />);
-    fireEvent.click(screen.getByText('Alt'));
+    fireEvent.click(screen.getByText('Esc'));
     expect(mockOnSendKey).toHaveBeenCalledTimes(1);
     expect(mockOnSendKey).toHaveBeenCalledWith('\x1b');
   });

@@ -14,7 +14,7 @@ interface TerminalComponentProps {
   // NOTE:
   // - WebSocketの出力は短時間に大量のチャンクが来る（ls等）。
   // - React stateで「最後の1チャンクだけ」渡すと、バッチ処理で中間チャンクが落ちることがある。
-  // - なので “tick + drain” 方式でまとめて書き込む。
+  // - なので "tick + drain" 方式でまとめて書き込む。
   incomingData?: IncomingChunk | null; // backward compat
   incomingTick?: number;
   drainIncoming?: () => string[];
@@ -195,7 +195,6 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ onData, onResize,
     };
   }, []);
 
-  // モバイルでユーザージェスチャー（タッチ/クリック）時にフォーカスを当てる
   const handleFocus = () => {
     xtermInstance.current?.focus();
   };

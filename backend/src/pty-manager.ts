@@ -145,15 +145,22 @@ export class PtyManager {
         }
 
         // tmuxを使用する場合は、SSH先のホスト側でtmuxを起動させる
+        // ステータスバーはモバイル画面幅でも崩れないようコンパクト化
         if (useTmux) {
-          shellArgs.push(`tmux new-session -A -s ${tmuxSessionName}`);
+          shellArgs.push(
+            `tmux new-session -A -s ${tmuxSessionName}`
+            + ` \\; set -g status-right '%H:%M'`
+            + ` \\; set -g status-left-length 20`
+          );
         }
       }
 
+      // 初期サイズをモバイル寄りに設定（80列だとスマホで初期表示が崩れる）
+      // PC/タブレットはWebSocket接続後すぐにリサイズが来るので影響なし
       const ptyProcess = pty.spawn(buildShell, shellArgs, {
         name: 'xterm-color',
-        cols: 80,
-        rows: 24,
+        cols: 38,
+        rows: 20,
         cwd: process.env.HOME || process.cwd(),
         env: process.env as { [key: string]: string },
       });
@@ -173,7 +180,8 @@ export class PtyManager {
 
       if (useTmux && !sshTarget) {
         // ローカルモードの時だけ、こちら側からtmuxを送り込む（SSHモードは引数で指定済み）
-        ptyProcess.write(`tmux new-session -A -s ${tmuxSessionName}\r`);
+        // ステータスバーはモバイル画面幅でも崩れないようコンパクト化
+        ptyProcess.write(`tmux new-session -A -s ${tmuxSessionName} \\; set -g status-right ' %H:%M ' \\; set -g status-left-length 20\r`);
       }
 
       return ptyProcess as unknown as TerminalSession;
