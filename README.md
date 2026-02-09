@@ -25,7 +25,7 @@
   - [主な機能](#主な機能)
 - [📋 共通の前提条件](#-共通の前提条件)
   - [必須要件](#必須要件)
-  - [WSL2環境での注意事項（Ubuntu 24.04以降）](#wsl2環境での注意事項ubuntu-2404以降)
+  - [プラットフォーム別の注意事項](#プラットフォーム別の注意事項)
 - [🚀 本番環境（プロダクション・運用）](#-本番環境プロダクション運用)
   - [1. 最短起動（GHCR・推奨）](#1-最短起動ghcr推奨)
   - [2. 使い方・運用手順](#2-使い方運用手順)
@@ -45,7 +45,7 @@
 
 本ドキュメントを読む前に、以下の点にご注意ください。
 
-- **コマンドの実行場所**: 特別な断りがない限り、本ドキュメントに記載されているコマンドは**対象のWSLディストリビューションのターミナル**から実行してください。Windowsのコマンドプロンプトや PowerShell からではありません。
+- **コマンドの実行場所**: 特別な断りがない限り、本ドキュメントに記載されているコマンドは**Aoi-Terminalsをインストールするホスト環境のターミナル**から実行してください。
 
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 
@@ -76,7 +76,7 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
 
 <div align="center">
   <img src="png/full-architecture-cute.png" alt="システム全体像" width="500">
-  <p><em>GitHub・Docker・WSL・Ubuntuの連携イメージ</em></p>
+  <p><em>GitHub・Docker・ホスト環境の連携イメージ</em></p>
 </div>
 
 ### 主な機能
@@ -98,26 +98,32 @@ Aoi-Terminalsは、Androidスマホ・タブレットから快適にターミナ
 
 ### 必須要件
 
-1. **WSL2 + Ubuntu 24.04以降**: 本システムはWSL2上のUbuntu 24.04以降（systemd環境）を前提としています
-2. **Docker**: WSLネイティブDocker（docker-ce）がインストールされていること
-   - Docker Desktopは不要です。WSL内でdocker-ceを直接使用します
+1. **Linux / macOS ホスト環境**: docker-ce、SSHサーバー、bash が動作する環境であること
+   - 対応環境: Ubuntu, Debian, Fedora, Arch Linux, macOS, Raspberry Pi, VPS（AWS/GCP等）, WSL2 等
+2. **Docker (docker-ce)**: docker-ceがインストールされていること
+   - Docker Desktopは不要です。docker-ceを直接使用します
    - インストール方法: [Docker公式ドキュメント](https://docs.docker.com/engine/install/ubuntu/)
-3. **一般ユーザー（UID 1000推奨）**: `root` ではなく、WSLで最初に作成したユーザー（UID 1000）で実行すること
+3. **一般ユーザー（UID 1000推奨）**: `root` ではなく、一般ユーザー（UID 1000）で実行すること
    - 確認方法: `id -u` を実行して `1000` と表示されればOK
    - **UID 1000以外の場合**: インストール時に「ユーザーIDが1000ではありませんが続行しますか？」という確認メッセージが表示されます。続行を選択すると、コンテナ起動時にSSH鍵を自動的にコピーして権限を調整する処理が行われます
-4. **SSHサーバー**: WSL環境では `openssh-server` が必要です
+4. **SSHサーバー**: `openssh-server` がインストールされ、起動していること
    ```bash
+   # Ubuntu / Debian
    sudo apt update && sudo apt install -y openssh-server
-   sudo service ssh start
+   sudo systemctl start ssh
+
+   # macOS: システム設定 → 一般 → 共有 → リモートログインを有効化
    ```
-5. **VPN（Tailscale等）**: スマホ/タブレットとWSL環境が同一VPNネットワーク上にあること
+5. **VPN（Tailscale等）**: スマホ/タブレットとホスト環境が同一VPNネットワーク上にあること
    - [Tailscale](https://tailscale.com/) 推奨（無料プランあり、簡単セットアップ）
-   - スマホ（Android/iOS）と**WSL側**の両方にTailscaleをインストール
-   - ⚠️ **注意**: TailscaleはWindows側ではなく**WSL側**にインストールしてください
+   - スマホ（Android/iOS）と**ホスト側**の両方にTailscaleをインストール
+   - ⚠️ **WSL2の場合**: TailscaleはWindows側ではなく**WSL側**にインストールしてください
    - 同じTailscaleアカウントでログインすれば、プライベートIPで相互接続可能
    - Aoi-Terminalsは、このTailscaleの接続が確立している状態で動作します。
 
-### WSL2環境での注意事項（Ubuntu 24.04以降）
+### プラットフォーム別の注意事項
+
+#### WSL2（Ubuntu 24.04以降）
 
 Ubuntu 24.04以降では、systemdがデフォルトで有効化されており、`systemd-binfmt`サービスがWSL Interop（WindowsコマンドをWSLから実行する機能）を無効化してしまう場合があります。
 
@@ -140,7 +146,7 @@ notepad.exe
 # メモ帳が起動すればOK
 ```
 
-### 複数のWSLディストリビューションを使用する場合
+#### 複数のWSLディストリビューションを使用する場合
 
 同じWindows上で複数のWSLディストリビューション（例：Ubuntu-22.04とUbuntu-24.04）を使用している場合、**ポートが競合する**ことがあります。
 
@@ -166,6 +172,17 @@ sudo systemctl stop ssh.socket ssh.service  # SSHを停止
 ~/.aoi-terminals/aoi-terminals stop          # 本番環境を停止
 ./scripts/stop.sh                            # 開発環境を停止
 ```
+
+#### macOS
+
+- SSHサーバーは「システム設定 → 一般 → 共有 → リモートログイン」で有効化
+- Docker環境は [Docker Desktop for Mac](https://www.docker.com/products/docker-desktop/) または [OrbStack](https://orbstack.dev/) を使用
+- `network_mode: host` はmacOSのDocker環境では動作が異なる場合があります
+
+#### VPS / リモートサーバー
+
+- SSHサーバーはデフォルトで稼働していることが多い
+- Tailscaleをインストールすることで、スマホからプライベートIPでアクセス可能
 
 <p align="right">(<a href="#目次">トップへ戻る</a>)</p>
 
@@ -311,11 +328,11 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/takamiya1021/app045-aoi-ter
 
 **対処方法**: Enterキーを2回押すことでコマンドが実行されます（1回目でカーソル位置が正常に戻り、2回目で実行）。
 
-### WSL再起動後にdockerコマンドが見つからない
+### 再起動後にdockerコマンドが見つからない
 
-WSLを再起動（`wsl --shutdown`など）した後、`docker`コマンドが見つからない、またはDockerデーモンに接続できないエラーが発生することがあります。これはWSL再起動時にDockerデーモンが自動起動しないためです。
+ホスト環境を再起動した後、`docker`コマンドが見つからない、またはDockerデーモンに接続できないエラーが発生することがあります。これは再起動時にDockerデーモンが自動起動しないためです。
 
-**対処方法**: WSLターミナルでDockerデーモンを手動で起動してください：
+**対処方法**: ターミナルでDockerデーモンを手動で起動してください：
 ```bash
 sudo systemctl start docker
 ```
@@ -333,10 +350,10 @@ sudo systemctl enable docker
 よく遭遇する問題と確認ポイントをまとめています。
 
 **現象**: インストール時に `sudo service ssh start` を実行するようメッセージが表示される<br>
-**対策**: 同じWSLターミナル内でそのコマンドを実行する
+**対策**: 同じターミナル内でそのコマンドを実行する
 
 **現象**: スマホから接続できない<br>
-**対策**: WSL内でDockerコンテナが起動しているか確認する（`docker ps`）。TailscaleがWSL側で接続されているか確認する（`tailscale status`）
+**対策**: ホスト環境でDockerコンテナが起動しているか確認する（`docker ps`）。Tailscaleがホスト側で接続されているか確認する（`tailscale status`）
 
 **現象**: 上記で解決しない<br>
 **対策**: このREADMEをClaude CodeなどのAIに渡して質問する（本ドキュメント自体がAIで作成されています）

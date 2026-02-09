@@ -26,7 +26,7 @@
 | フロントエンド | Vite + React 18 + xterm.js + Tailwind CSS |
 | バックエンド | Express + node-pty + WebSocket (ws) + SSH bridge |
 | テスト | Jest (ts-jest) + Playwright |
-| Docker | WSLネイティブDocker (docker-ce)、`network_mode: host` |
+| Docker | docker-ce、`network_mode: host` |
 | フロントエンド配信 | Viteビルド → nginx（Docker）/ Vite dev server（開発時） |
 
 ### 0.2 TDD原則の適用
@@ -596,7 +596,7 @@ Docker Composeで起動し、本番環境で動作確認
     - ランタイムステージ: node:20-bookworm-slim + tmux + bash + openssh-client
 
 - [x] **Green**: docker-compose.ghcr.yml作成
-  - `network_mode: "host"`（WSLネイティブDocker対応）
+  - `network_mode: "host"`（ホストネットワーク共有）
   - バックエンド環境変数: `PORT`, `ALLOWED_ORIGINS`, `TERMINAL_TOKEN`, `TERMINAL_SSH_TARGET`, `TERMINAL_SSH_KEY`
   - SSH秘密鍵のボリュームマウント（`./backend/ssh_key:/app/ssh_key:ro`）
 
@@ -605,7 +605,7 @@ Docker Composeで起動し、本番環境で動作確認
   - `restart: unless-stopped`で自動再起動
 
 **実装メモ**:
-- WSLネイティブDocker（docker-ce）を使用。Docker Desktopではない。
+- docker-ceを使用。Docker Desktopではない。
 - `network_mode: host`により、ホストのネットワークスタックを直接利用。ポートマッピング不要。
 - SSH bridgeでコンテナからホストのbashに接続する構成。
 
@@ -754,7 +754,7 @@ backend/src/
 | IME対応の不具合 | 中 | 高 | compositionイベントの保険処理、TextInputModalによるフォールバック入力 |
 | WebSocket接続不安定 | 低 | 高 | エラー表示UI、セッション再チェック機能 |
 | SSH bridge接続失敗 | 低 | 高 | FallbackSession（簡易シェル）でPTY不可時も最低限動作 |
-| Docker/WSLの互換性 | 中 | 中 | `network_mode: host`で仮想ネットワーク問題を回避 |
+| Docker/ホスト環境の互換性 | 中 | 中 | `network_mode: host`で仮想ネットワーク問題を回避 |
 | E2Eテストの不安定さ | 中 | 中 | 待機処理（await）の適切な使用、リトライ設定 |
 
 ### 15.2 設計判断の記録

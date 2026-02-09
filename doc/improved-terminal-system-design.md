@@ -1,4 +1,4 @@
-# Aoi-Terminals 技術設計書（v2/v3）
+# Aoi-Terminals 技術設計書（v3/v4）
 
 ## 1. 技術スタック選定
 
@@ -14,7 +14,7 @@
 | **PTY** | node-pty 1.x | PTY生成・シェル実行に最適（利用不可環境ではFallbackShellにフォールバック） |
 | **ロガー** | winston | 構造化ログ、コンソール出力 |
 | **フロントエンド配信** | nginx（Dockerコンテナ内） | Viteビルド成果物を静的配信。SPAフォールバック対応 |
-| **コンテナ** | Docker（WSLネイティブdocker-ce） | `network_mode: host`でWSL2ネットワークをそのまま利用 |
+| **コンテナ** | Docker（docker-ce） | `network_mode: host`でホストのネットワークをそのまま利用 |
 | **パッケージ管理** | npm | 標準的 |
 
 ### 1.2 v1からの変更点（削除されたもの）
@@ -26,7 +26,7 @@
 | useTerminal.ts hook | App.tsxに統合。単一コンポーネントで状態管理が完結 |
 | tmux-helper.ts（バックエンド） | フロントからtmuxプレフィックスキーを直接送信する方式に変更 |
 | config/server-config.json | 環境変数で一元管理（Docker対応） |
-| Docker Desktop | WSLネイティブDocker（docker-ce）を使用 |
+| Docker Desktop | docker-ceを使用 |
 | next.config.mjs, app/layout.tsx | Next.js関連ファイルすべて削除 |
 
 ### 1.3 設計判断の背景
@@ -78,7 +78,7 @@
 └──────────────────────────┼──────────────────────────────────┘
                            │
 ┌──────────────────────────▼──────────────────────────────────┐
-│  WSL2 Ubuntu ホスト                                         │
+│  Linux / macOS ホスト                                        │
 │  ├─ bash / tmux                                             │
 │  └─ OpenSSH Server（鍵認証）                                │
 └─────────────────────────────────────────────────────────────┘
@@ -446,7 +446,7 @@ aoi-terminal-system/
 │  └─ package.json
 │
 ├─ scripts/                    # 運用スクリプト
-│  ├─ install-docker.sh        - WSLネイティブDocker対応インストーラー
+│  ├─ install-docker.sh        - docker-ce対応インストーラー
 │  ├─ production-cli.sh        - 本番CLI生成
 │  ├─ start.sh                 - 開発用起動
 │  ├─ stop.sh                  - 停止

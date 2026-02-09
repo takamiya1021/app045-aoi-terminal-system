@@ -48,7 +48,7 @@ ttyd（C言語製の軽量Webターミナル）は同じ仕組み（xterm.js + W
 
 ### Q4: なぜSSH bridgeが必要？
 
-Dockerコンテナの中で起動したbashは、コンテナ内のbashであってホストのbashではない。ホストのファイルシステム・環境変数・ユーザー設定・tmuxセッション等は見えない。そのため、コンテナからホストのシェルに「橋渡し（SSH bridge）」する仕組みが必要。これはDocker Desktop でも WSLネイティブDocker でも同じ（コンテナの隔離性はDocker自体の特性）。
+Dockerコンテナの中で起動したbashは、コンテナ内のbashであってホストのbashではない。ホストのファイルシステム・環境変数・ユーザー設定・tmuxセッション等は見えない。そのため、コンテナからホストのシェルに「橋渡し（SSH bridge）」する仕組みが必要。これはDocker Desktop でも docker-ce でも同じ（コンテナの隔離性はDocker自体の特性）。
 
 ## 4. アーキテクチャ
 
@@ -113,7 +113,7 @@ v3で一度復活したTmuxPanelは、運用を経てv4で再度削除された�
 |------|------|-----------|
 | Linux（各ディストリビューション） | ✅ | docker-ce + SSH + bash |
 | macOS | ✅ | Docker + SSH + bash/zsh |
-| Windows + WSL | ✅ | WSL内で動作 |
+| Windows + WSL2 | ✅ | WSL2内でLinuxとして動作 |
 | VPS (AWS, GCP等) | ✅ | 標準的なLinuxサーバー |
 | ラズベリーパイ | ✅ | ARM版docker-ce対応 |
 | Windows単体 | ❌ | Linuxシェルがなく、docker-ceが直接動作しない |
@@ -138,7 +138,7 @@ v3で一度復活したTmuxPanelは、運用を経てv4で再度削除された�
 - **Tailwind CSS 3**: スタイリング
 
 ### インフラ
-- **Docker (docker-ce)**: コンテナ化・配布（WSLネイティブDocker）
+- **Docker (docker-ce)**: コンテナ化・配布
 - **GHCR**: Dockerイメージの配布
 - **SSH bridge**: コンテナからホストシェルへの接続
 
@@ -176,9 +176,9 @@ curl -L "https://raw.githubusercontent.com/.../install.sh" | bash
 
 | 対象 | v1 | v2 | 理由 |
 |------|-----|-----|------|
-| **Docker環境** | Docker Desktop (Windows) | WSLネイティブDocker (docker-ce) | Windows側の依存を排除、WSL内で完結 |
+| **Docker環境** | Docker Desktop (Windows) | docker-ce（ホストに直接インストール） | Docker Desktop依存を排除、ホスト内で完結 |
 | **対応環境** | WSL2 + Ubuntu 24.04限定 | docker-ce + SSH が動く全環境 | アプリの本質に立ち返り不要な制限を撤廃 |
-| **SSH bridge接続先** | `host.docker.internal` | WSLネイティブDocker対応方式 | Docker環境の移行に伴う変更 |
+| **SSH bridge接続先** | `host.docker.internal` | `localhost`（network_mode: host） | Docker環境の移行に伴う変更 |
 | **フロントエンド** | Next.js 14 + React | Vite + React 18 + TypeScript | SSR不要のためNext.jsを廃止、ビルド後は静的ファイル |
 
 ### v2 → v3 で復活したもの
@@ -199,7 +199,7 @@ curl -L "https://raw.githubusercontent.com/.../install.sh" | bash
 | 対象 | 備考 |
 |------|------|
 | **フロントエンド技術スタック** | Vite + React 18 + TypeScript + Tailwind CSS（v2と同一） |
-| **Docker構成** | WSLネイティブDocker（docker-ce）、network_mode: host |
+| **Docker構成** | docker-ce、network_mode: host |
 | **SSH bridge** | コンテナ → ホストbash接続方式 |
 | **認証・セキュリティ** | トークン認証 + QRコードログイン |
 
@@ -221,9 +221,9 @@ curl -L "https://raw.githubusercontent.com/.../install.sh" | bash
 
 v3時点で以下は全て実装完了済み:
 
-- [x] Docker環境の移行: Docker Desktop → WSLネイティブDocker (docker-ce)
+- [x] Docker環境の移行: Docker Desktop → docker-ce
 - [x] フロントエンドの刷新: Next.js → Vite + React 18 + TypeScript
-- [x] SSH bridge接続先の変更: WSLネイティブDocker対応
+- [x] SSH bridge接続先の変更: docker-ce（network_mode: host）対応
 - [x] 対応環境の拡大: Ubuntu限定の前提条件を撤廃
 - [x] ~~tmux操作GUIパネルの復活~~ → v4で再度削除（tmuxは裏方で透過的に動作）
 - [x] ControlPanelの操作キー配列（Esc/Tab/Enter/^C/^D/^Z/矢印/IME）
