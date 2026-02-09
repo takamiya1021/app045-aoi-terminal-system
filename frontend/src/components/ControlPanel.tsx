@@ -35,25 +35,26 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSendKey, onOpenTextInput 
 
   return (
     <div className="p-1.5 bg-slate-800 border-t border-slate-700 flex flex-col gap-1 shadow-inner">
-      {/* Special Keys */}
-      <div className="flex flex-wrap gap-1">
-        {renderButton('Esc', '\x1b', 'EscKey')}
-        {renderButton('Tab', '\t', 'TabKey')}
-        {renderButton('Enter', '\r', 'EnterKey')}
-        {onOpenTextInput ? renderActionButton('IME', onOpenTextInput, 'ImeButton', 'Open IME Input') : null}
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {/* Shortcuts */}
-        <div className="flex flex-wrap gap-1 flex-grow">
-          {renderButton('^C', '\x03', 'CtrlCKey')}
-          {renderButton('^D', '\x04', 'CtrlDKey')}
-          {renderButton('^Z', '\x1a', 'CtrlZKey')}
+      {/* 操作キー + 矢印キー（TmuxPanel開時と同じ配列） */}
+      <div className="flex gap-1">
+        <div className="flex flex-col gap-1 flex-grow min-w-0">
+          <div className="flex gap-1">
+            {renderButton('Esc', '\x1b', 'EscKey')}
+            {renderButton('Tab', '\t', 'TabKey')}
+            {renderButton('Enter', '\r', 'EnterKey')}
+            {onOpenTextInput ? renderActionButton('IME', onOpenTextInput, 'ImeButton', 'Open IME Input') : null}
+          </div>
+          <div className="flex gap-1">
+            {renderButton('^C', '\x03', 'CtrlCKey')}
+            {renderButton('^D', '\x04', 'CtrlDKey')}
+            {renderButton('^Z', '\x1a', 'CtrlZKey')}
+          </div>
         </div>
-
-        {/* Arrow Keys */}
-        <div className="grid grid-cols-3 gap-1 w-32 shrink-0">
-          <div className="col-start-2">{renderButton('▲', '\x1b[A', 'ArrowUpKey', 'Arrow Up')}</div>
+        {/* 矢印キー（右角・逆T字） */}
+        <div className="grid grid-cols-3 gap-1 shrink-0 w-[138px]">
+          <div />
+          {renderButton('▲', '\x1b[A', 'ArrowUpKey', 'Arrow Up')}
+          <div />
           {renderButton('◀', '\x1b[D', 'ArrowLeftKey', 'Arrow Left')}
           {renderButton('▼', '\x1b[B', 'ArrowDownKey', 'Arrow Down')}
           {renderButton('▶', '\x1b[C', 'ArrowRightKey', 'Arrow Right')}

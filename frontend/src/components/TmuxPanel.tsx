@@ -15,7 +15,7 @@ const TmuxPanel: React.FC<TmuxPanelProps> = ({ isOpen, onToggle, onSendKey, onOp
   const renderButton = (label: string, keys: string, uniqueKey: string, isWarning?: boolean) => (
     <button
       key={uniqueKey}
-      className={`px-3 py-1 ${isWarning ? 'bg-red-700 hover:bg-red-600' : 'bg-slate-700 hover:bg-slate-600'} text-slate-200 rounded-md active:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-slate-900 text-sm font-mono flex-grow min-h-[36px] transition-colors`}
+      className={`px-3 py-1 ${isWarning ? 'border border-red-500 bg-transparent text-red-400 hover:bg-red-500/20' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'} rounded-md active:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-slate-900 text-sm font-mono flex-grow min-h-[36px] transition-colors`}
       onClick={() => onSendKey(keys)}
     >
       {label}
@@ -42,44 +42,51 @@ const TmuxPanel: React.FC<TmuxPanelProps> = ({ isOpen, onToggle, onSendKey, onOp
       {isOpen ? (
         <div data-testid="tmux-panel-content" className="grid mt-1 gap-1">
           {/* tmux操作ボタン */}
-          <div className="flex flex-wrap gap-1">
+          <div className="flex gap-1">
             {renderButton('New Window (c)', `${TMUX_PREFIX}c`, 'new-window')}
             {renderButton('Next Window (n)', `${TMUX_PREFIX}n`, 'next-window')}
             {renderButton('Prev Window (p)', `${TMUX_PREFIX}p`, 'prev-window')}
-            {renderButton('Sessions (s)', `${TMUX_PREFIX}s`, 'sessions')}
-            {renderButton('Detach (d)', `${TMUX_PREFIX}d`, 'detach', true)}
           </div>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex gap-1">
+            {renderButton('Sessions (s)', `${TMUX_PREFIX}s`, 'sessions')}
             {renderButton('Split V (%)', `${TMUX_PREFIX}%`, 'split-v')}
             {renderButton('Split H (")', `${TMUX_PREFIX}"`, 'split-h')}
+          </div>
+          <div className="flex gap-1">
             {renderButton('Swap Pane (o)', `${TMUX_PREFIX}o`, 'swap-pane')}
             {renderButton('Zoom (z)', `${TMUX_PREFIX}z`, 'zoom')}
             {renderButton('Scroll ([)', `${TMUX_PREFIX}[`, 'scroll-mode')}
+            {renderButton('Detach (d)', `${TMUX_PREFIX}d`, 'detach', true)}
           </div>
 
-          {/* 必須キー（ControlPanelと同じ配列） */}
-          <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-700">
-            {renderButton('Esc', '\x1b', 'esc')}
-            {renderButton('Tab', '\t', 'tab')}
-            {renderButton('Enter', '\r', 'enter')}
-            {onOpenTextInput ? (
-              <button
-                key="ime"
-                className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md active:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-slate-900 text-sm font-mono flex-grow min-h-[36px] transition-colors"
-                onClick={onOpenTextInput}
-              >
-                IME
-              </button>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap gap-1 flex-grow">
-              {renderButton('^C', '\x03', 'ctrl-c')}
-              {renderButton('^D', '\x04', 'ctrl-d')}
-              {renderButton('^Z', '\x1a', 'ctrl-z')}
+          {/* 操作キー + 矢印キー */}
+          <div className="flex gap-1 pt-1 border-t border-slate-700">
+            <div className="flex flex-col gap-1 flex-grow min-w-0">
+              <div className="flex gap-1">
+                {renderButton('Esc', '\x1b', 'esc')}
+                {renderButton('Tab', '\t', 'tab')}
+                {renderButton('Enter', '\r', 'enter')}
+                {onOpenTextInput ? (
+                  <button
+                    key="ime"
+                    className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md active:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-slate-900 text-sm font-mono flex-grow min-h-[36px] transition-colors"
+                    onClick={onOpenTextInput}
+                  >
+                    IME
+                  </button>
+                ) : null}
+              </div>
+              <div className="flex gap-1">
+                {renderButton('^C', '\x03', 'ctrl-c')}
+                {renderButton('^D', '\x04', 'ctrl-d')}
+                {renderButton('^Z', '\x1a', 'ctrl-z')}
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-1 w-32 shrink-0">
-              <div className="col-start-2">{renderButton('▲', '\x1b[A', 'arrow-up')}</div>
+            {/* 矢印キー（右角・逆T字） */}
+            <div className="grid grid-cols-3 gap-1 shrink-0 w-[138px]">
+              <div />
+              {renderButton('▲', '\x1b[A', 'arrow-up')}
+              <div />
               {renderButton('◀', '\x1b[D', 'arrow-left')}
               {renderButton('▼', '\x1b[B', 'arrow-down')}
               {renderButton('▶', '\x1b[C', 'arrow-right')}
